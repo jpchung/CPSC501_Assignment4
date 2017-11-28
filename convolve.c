@@ -12,6 +12,7 @@
 /*  Include files  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /*  Function prototypes  */
 void convolve(float x[], int N, float h[], int M, float y[], int P);
@@ -26,12 +27,48 @@ void print_vector(char *title, float x[], int N);
 *
 *****************************************************************************/
 
-int main(int argc, char **argv)
+int main(int argc, char *argv[])
 {
 
+    char* inputFileName;
+    char* impulseFileName;
+    char* outputFileName;
+
+    //check number of command-line arguments
     if(argc <= 3){
-        printf("Usage: ./convolve <inputfile> <IRfile> <outputfile>\n");
+        printf("Usage: ./convolve <inputfile.wav> <IRfile.wav> <outputfile.wav>\n");
         return EXIT_FAILURE;
+    }
+    else {
+        printf("Correct number of arguments...\n");
+
+        inputFileName = argv[1];
+        impulseFileName = argv[2];
+        outputFileName = argv[3];
+
+        //check if command-line args have correct file extensions
+        //can probably refactor this later...
+        const char* fileExtension = strrchr(inputFileName, '.');
+        if(!fileExtension){
+            //no file extension
+            printf("No file extension found!\n");
+            printf("Usage: ./convolve <inputfile.wav> <IRfile.wav> <outputfile.wav>\n");
+        
+            return EXIT_FAILURE;
+        }
+        else if((strcmp(fileExtension, ".wav")) != 0){
+            //wrong file extension
+            printf("Wrong file extension found!\n");
+            printf("Usage: ./convolve <inputfile.wav> <IRfile.wav> <outputfile.wav>\n");
+        
+            return EXIT_FAILURE;
+
+        }
+        else {
+            printf("correct file extension\n");
+
+        }
+
     }
 
 
