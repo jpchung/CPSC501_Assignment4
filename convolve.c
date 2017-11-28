@@ -17,6 +17,7 @@
 /*  Function prototypes  */
 void convolve(float x[], int N, float h[], int M, float y[], int P);
 void print_vector(char *title, float x[], int N);
+int check_fileExtension(char* fileName);
 
 
 /*****************************************************************************
@@ -46,29 +47,28 @@ int main(int argc, char *argv[])
         impulseFileName = argv[2];
         outputFileName = argv[3];
 
-        //check if command-line args have correct file extensions
-        //can probably refactor this later...
-        const char* fileExtension = strrchr(inputFileName, '.');
-        if(!fileExtension){
-            //no file extension
-            printf("No file extension found!\n");
-            printf("Usage: ./convolve <inputfile.wav> <IRfile.wav> <outputfile.wav>\n");
-        
-            return EXIT_FAILURE;
-        }
-        else if((strcmp(fileExtension, ".wav")) != 0){
-            //wrong file extension
-            printf("Wrong file extension found!\n");
-            printf("Usage: ./convolve <inputfile.wav> <IRfile.wav> <outputfile.wav>\n");
-        
-            return EXIT_FAILURE;
 
+        int inputExtension = check_fileExtension(inputFileName);
+        int impulseExtension = check_fileExtension(impulseFileName);
+        int outputExtension = check_fileExtension(outputFileName);
+        
+        int fileExtensionFlag = 0;        
+        int fileExtensions[3] = {inputExtension, impulseExtension, outputExtension};
+        for(int i = 0; i < sizeof(fileExtensions); i++){
+            if(fileExtensions[i] == EXIT_FAILURE){
+                fileExtensionFlag = 1;
+            }
+        }
+
+        if(fileExtensionFlag == 1){
+            printf("Usage: ./convolve <inputfile.wav> <IRfile.wav> <outputfile.wav>\n");       
+            printf("returning %d\n", EXIT_FAILURE);
+            return EXIT_FAILURE;
         }
         else {
-            printf("correct file extension\n");
 
         }
-
+        
     }
 
 
@@ -276,4 +276,31 @@ void print_vector(char *title, float x[], int N)
   printf("Sample Number \tSample Value\n");
   for (i = 0; i < N; i++)
     printf("%-d\t\t%f\n", i, x[i]);
+}
+
+/**
+ * Function: check_fileExtension
+ * Description: checks for .wav file extension in file names
+ * Parameter(s): fileName is string for name of file
+*/
+int check_fileExtension(char* fileName){
+
+    printf("Checking file extension for %s...", fileName);
+    const char* fileExtension = strrchr(fileName, '.');
+
+    if(!fileExtension){
+        //no file extension
+        printf("No file extension found!\n");
+        return EXIT_FAILURE;
+    }
+    else if((strcmp(fileExtension, ".wav")) != 0){
+        //wrong file extension
+        printf("Wrong file extension found!\n");    
+        return EXIT_FAILURE;
+    }
+    else {
+        printf("correct file extension\n");
+        return EXIT_SUCCESS;
+    }
+   
 }
