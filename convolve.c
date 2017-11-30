@@ -14,10 +14,67 @@
 #include <stdlib.h>
 #include <string.h>
 
-/*  Function prototypes  */
+
+/*Instance variable declarations */
+
+//RIFF Chunk Descriptor (inputfile.wav)
+char inputChunkID[4];
+int inputChunkSize;
+char inputFormat[4];
+//fmt subchunk (inputfile.wav)
+char inputSubChunk1ID[4];
+int inputSubChunk1Size;
+short inputAudioFormat;
+short inputNumChannels;
+int inputSampleRate;
+int inputByteRate;
+short inputBlockAlign;
+short inputBitsPerSample;
+//data subchunk (inputfile.wav)
+char inputSubChunk2ID[4];
+int inputSubChunk2Size;
+//will need to dynamically allocate memory for data when reading
+short* inputWAVdata;
+
+//RIFF Chunk Descriptor (IRfile.wav)
+char impulseChunkID[4];
+int impulseChunkSize;
+char impulseFormat[4];
+//fmt subchunk (IRfile.wav)
+char impulseSubChunk1ID[4];
+int impulseSubChunk1Size;
+short impulseAudioFormat;
+short impulseNumChannels;
+int impulseSampleRate;
+int impulseByteRate;
+short impulseBlockAlign;
+short impulseBitsPerSample;
+//data subchunk (IRfile.wav)
+char impulseSubChunk2ID[4];
+int impulseSubChunk2Size;
+
+//RIFF Chunk Descriptor (outputfile.wav)
+char outputChunkID[4];
+int outputChunkSize;
+char outputFormat[4];
+//fmt subchunk (outputfile.wav)
+char outputSubChunk1ID[4];
+int outputSubChunk1Size;
+short outputAudioFormat;
+short outputNumChannels;
+int outputSampleRate;
+int outputByteRate;
+short outputBlockAlign;
+short outputBitsPerSample;
+//data subchunk (outputfile.wav)
+char outputSubChunk2ID[4];
+int outputSubChunk2Size;
+
+/*  Function declarations  */
 void convolve(float x[], int N, float h[], int M, float y[], int P);
 void print_vector(char *title, float x[], int N);
 int check_fileExtension(char* fileName);
+int readInputWAV(char* fileName);
 
 
 /*****************************************************************************
@@ -43,6 +100,7 @@ int main(int argc, char *argv[])
     else {
         printf("Correct number of arguments...\n");
 
+
         inputFileName = argv[1];
         impulseFileName = argv[2];
         outputFileName = argv[3];
@@ -67,7 +125,9 @@ int main(int argc, char *argv[])
         }
         else {
 
+            readInputWAV(inputFileName);
         }
+        
         
     }
 
@@ -99,109 +159,6 @@ int main(int argc, char *argv[])
     print_vector("Output signal using identity IR", output_signal, output_size);
 
 
-    /*  Create an "inverse" impulse response.  The output should be
-        inverted when convolved with this  */
-    impulse_response[0] = -1.0;
-    impulse_size = 1;
-
-    /*  Set the expected size of the output signal  */
-    output_size = input_size + impulse_size - 1;
-
-    /*  Do the convolution, and print the output signal  */
-    convolve(input_signal, input_size, impulse_response, impulse_size,
-        output_signal, output_size);
-    print_vector("Output signal using inverse IR", output_signal, output_size);
-
-
-    /*  Create a "scaling" impulse response.  The output should be
-        1/2 the amplitude when convolved with this  */
-    impulse_response[0] = 0.5;
-    impulse_size = 1;
-
-    /*  Set the expected size of the output signal  */
-    output_size = input_size + impulse_size - 1;
-
-    /*  Do the convolution, and print the output signal  */
-    convolve(input_signal, input_size, impulse_response, impulse_size,
-        output_signal, output_size);
-    print_vector("Output signal scaled by 1/2", output_signal, output_size);
-
-
-    /*  Create a "delay" impulse response.  The output should be
-        delayed by 2 samples  */
-    impulse_response[0] = 0.0;
-    impulse_response[1] = 0.0;
-    impulse_response[2] = 1.0;
-    impulse_size = 3;
-
-    /*  Set the expected size of the output signal  */
-    output_size = input_size + impulse_size - 1;
-
-    /*  Do the convolution, and print the output signal  */
-    convolve(input_signal, input_size, impulse_response, impulse_size,
-        output_signal, output_size);
-    print_vector("Output delayed 2 samples", output_signal, output_size);
-
-
-    /*  Create a "delay and scaling" impulse response.  The output should be
-        delayed by 2 samples and be 1/2 the amplitude  */
-    impulse_response[0] = 0.0;
-    impulse_response[1] = 0.0;
-    impulse_response[2] = 0.5;
-    impulse_size = 3;
-
-    /*  Set the expected size of the output signal  */
-    output_size = input_size + impulse_size - 1;
-
-    /*  Do the convolution, and print the output signal  */
-    convolve(input_signal, input_size, impulse_response, impulse_size,
-        output_signal, output_size);
-    print_vector("Delayed 2 samples, 1/2 amplitude", output_signal, output_size);
-
-
-    /*  Create an "echo effect".  The output will contain the original signal
-        plus a copy delayed by 2 samples and 1/2 the amplitude.  The original
-        and copy will overlap starting at the 3rd sample  */
-    impulse_response[0] = 1.0;
-    impulse_response[1] = 0.0;
-    impulse_response[2] = 0.5;
-    impulse_size = 3;
-
-    /*  Set the expected size of the output signal  */
-    output_size = input_size + impulse_size - 1;
-
-    /*  Do the convolution, and print the output signal  */
-    convolve(input_signal, input_size, impulse_response, impulse_size,
-        output_signal, output_size);
-    print_vector("Overlapping echo", output_signal, output_size);
-
-
-    /*  Create an "echo effect" that doesn't overlap.  The output will
-        contain the original signal  plus a copy delayed by 5 samples
-        and 1/2 the amplitude.  */
-    impulse_response[0] = 1.0;
-    impulse_response[1] = 0.0;
-    impulse_response[2] = 0.0;
-    impulse_response[3] = 0.0;
-    impulse_response[4] = 0.0;
-    impulse_response[5] = 0.5;
-    impulse_size = 6;
-
-    /*  Set the expected size of the output signal  */
-    output_size = input_size + impulse_size - 1;
-
-    /*  Do the convolution, and print the output signal  */
-    convolve(input_signal, input_size, impulse_response, impulse_size,
-        output_signal, output_size);
-    print_vector("Non-overlapping echo", output_signal, output_size);
-
-
-    /*  Interchange the input signal and impulse response.  Since
-        convolution is commutative, you should get the same output  */
-    convolve(impulse_response, impulse_size, input_signal, input_size,
-        output_signal, output_size);
-    print_vector("Same as above, but with interchanged h[] and x[]",
-            output_signal, output_size);
 
     
     /*  End of program  */
@@ -303,4 +260,75 @@ int check_fileExtension(char* fileName){
         return EXIT_SUCCESS;
     }
    
+}
+
+
+int readInputWAV(char* fileName){
+    int fileFlag = 1;
+
+    //open file
+    FILE* fp = fopen(fileName, "rb");
+    if(fp != NULL){
+
+        //read WAV file by fields
+        //fread(storage pointer, size of bytes, n times to read, filepointer)
+        printf("Reading file: %s...\n", fileName);
+        //RIFF chunk descriptor
+        fread(inputChunkID,4,1,fp);
+        fread(&inputChunkSize,4,1,fp);
+        fread(inputFormat,4,1,fp);
+        //fmt subchunk 
+        fread(inputSubChunk1ID,4,1,fp);
+        fread(&inputSubChunk1Size,4,1,fp);
+        fread(&inputAudioFormat,2,1,fp);
+        fread(&inputNumChannels,2,1,fp);
+        fread(&inputSampleRate,4,1,fp);
+        fread(&inputByteRate,4,1,fp);
+        fread(&inputBlockAlign,2,1,fp);
+        fread(&inputBitsPerSample,2,1,fp);
+
+        //check size of data subchunk is 16, and read extra bytes if necessary
+        if(inputSubChunk1Size > 16){
+            int extraBytes = inputSubChunk1Size - 16;
+            int emptyBytes;
+            fread(&emptyBytes,1, extraBytes, fp);
+        }
+
+        //data subchunk
+        fread(inputSubChunk2ID,4,1,fp);
+        fread(&inputSubChunk2Size,4,1,fp);
+
+        printf("made it here...\n");
+
+        //calculate bytes per sample and number of samples 
+        int inputBytesPerSample = inputBitsPerSample/8;
+        printf("bytes per sample: %d\n", inputBytesPerSample);
+        int inputNumberOfSamples = inputSubChunk2Size/inputBytesPerSample; //since subchunk2size = sample data size in bytes
+        printf("number of samples: %d\n", inputNumberOfSamples);
+
+        /**/
+        //allocate memory for sound sample data
+        inputWAVdata = (short*) malloc(sizeof(short) * inputNumberOfSamples);
+
+        //read the sound data a sample at a time, checking for expected bytes per sample
+        short sampleData = 0;
+        int i = 0;
+        while(fread(&sampleData,1,inputBytesPerSample,fp) == inputBytesPerSample){
+            inputWAVdata[i++] = sampleData;
+            sampleData = 0; //clear for next sample
+            printf("%d\n", i);
+            //i++;
+        }
+        
+
+        fclose(fp);
+        printf("Finished reading %s!\n", fileName);
+
+        fileFlag = 0;
+    }
+    else{
+        printf("Error opening file %s\n", fileName);
+    }
+
+    return fileFlag;
 }
