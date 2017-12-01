@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
             return EXIT_FAILURE;
         }
         else {
-
+            //read input wav file
             readInputWAV(inputFileName);
         }
         
@@ -158,9 +158,7 @@ int main(int argc, char *argv[])
         output_signal, output_size);
     print_vector("Output signal using identity IR", output_signal, output_size);
 
-
-
-    
+  
     /*  End of program  */
     return 0;
 }
@@ -298,8 +296,6 @@ int readInputWAV(char* fileName){
         fread(inputSubChunk2ID,4,1,fp);
         fread(&inputSubChunk2Size,4,1,fp);
 
-        printf("made it here...\n");
-
         //calculate bytes per sample and number of samples 
         int inputBytesPerSample = inputBitsPerSample/8;
         printf("bytes per sample: %d\n", inputBytesPerSample);
@@ -313,14 +309,14 @@ int readInputWAV(char* fileName){
         //read the sound data a sample at a time, checking for expected bytes per sample
         short sampleData = 0;
         int i = 0;
-        while(fread(&sampleData,1,inputBytesPerSample,fp) == inputBytesPerSample){
+        while(fread(&sampleData,1, inputBytesPerSample,fp) == inputBytesPerSample){
             inputWAVdata[i++] = sampleData;
             sampleData = 0; //clear for next sample
-            printf("%d\n", i);
+            if((i % 100000) == 0)
+                printf("Reading data sample: %d...\n", i);
             //i++;
         }
         
-
         fclose(fp);
         printf("Finished reading %s!\n", fileName);
 
