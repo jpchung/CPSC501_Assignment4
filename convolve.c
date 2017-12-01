@@ -36,25 +36,10 @@ typedef struct wavFile {
 
 /*Instance variable declarations */
 
-//array for holding data from input WAV file
+//arrays for holding data from input and IR WAV files
 short* inputWAVdata;
+short* impulseWAVdata;
 
-//RIFF Chunk Descriptor (IRfile.wav)
-char impulseChunkID[4];
-int impulseChunkSize;
-char impulseFormat[4];
-//fmt subchunk (IRfile.wav)
-char impulseSubChunk1ID[4];
-int impulseSubChunk1Size;
-short impulseAudioFormat;
-short impulseNumChannels;
-int impulseSampleRate;
-int impulseByteRate;
-short impulseBlockAlign;
-short impulseBitsPerSample;
-//data subchunk (IRfile.wav)
-char impulseSubChunk2ID[4];
-int impulseSubChunk2Size;
 
 //RIFF Chunk Descriptor (outputfile.wav)
 char outputChunkID[4];
@@ -77,7 +62,7 @@ int outputSubChunk2Size;
 void convolve(float x[], int N, float h[], int M, float y[], int P);
 void print_vector(char *title, float x[], int N);
 int check_fileExtension(char* fileName);
-int readInputWAV(char* fileName);
+int readWAV(char* fileName, char* signalType);
 
 
 /*****************************************************************************
@@ -128,7 +113,9 @@ int main(int argc, char *argv[])
         }
         else {
             //read input wav file
-            readInputWAV(inputFileName);
+            readWAV(inputFileName, "input");
+            printf("\n");
+            readWAV(impulseFileName, "impulse");
         }
         
         
@@ -264,70 +251,91 @@ int check_fileExtension(char* fileName){
 }
 
 
-int readInputWAV(char* fileName){
+int readWAV(char* fileName, char* signalType){
     int fileFlag = 1;
 
     //open file
     FILE* fp = fopen(fileName, "rb");
     if(fp != NULL){
 
-        struct wavFile input;
+        struct wavFile wav;
 
         //read WAV file by fields
         //fread(storage pointer, size of bytes, n times to read, filepointer)
         printf("Reading file: %s...\n", fileName); 
         
         //RIFF chunk descriptor
-        fread(input.chunkID,4,1,fp);
-        fread(&(input.chunkSize),4,1,fp);
-        printf("input chunk size:  %d\n", input.chunkSize);
-        fread(input.format,4,1,fp);
-        //fmt subchunk
-        fread(input.subChunk1_ID,4,1,fp);
-        fread(&(input.subChunk1_Size),4,1,fp); 
-        fread(&(input.audioFormat),2,1,fp); 
-        fread(&(input.numChannels),2,1,fp);
-        fread(&(input.sampleRate),4,1,fp); 
-        fread(&(input.byteRate),4,1,fp); 
-        fread(&(input.blockAlign),2,1,fp); 
-        fread(&(input.bitsPerSample),2,1,fp); 
+        fread(wav.chunkID,4,1,fp);
+        fread(&(wav.chunkSize),4,1,fp);
+        fread(wav.format,4,1,fp);
 
-        printf("subchunk 1 size: %d\n", input.subChunk1_Size);
-        printf("audio format: %d\n", input.audioFormat);        
-        printf("num channels: %d\n", input.numChannels);
-        printf("sample rate: %d\n", input.sampleRate);
+        printf("chunk size:  %d\n", wav.chunkSize);
+        
+        //fmt subchunk
+        fread(wav.subChunk1_ID,4,1,fp);
+        fread(&(wav.subChunk1_Size),4,1,fp); 
+        fread(&(wav.audioFormat),2,1,fp); 
+        fread(&(wav.numChannels),2,1,fp);
+        fread(&(wav.sampleRate),4,1,fp); 
+        fread(&(wav.byteRate),4,1,fp); 
+        fread(&(wav.blockAlign),2,1,fp); 
+        fread(&(wav.bitsPerSample),2,1,fp); 
+
+        printf("subchunk1 size: %d\n", wav.subChunk1_Size);
+        printf("audio format: %d\n", wav.audioFormat);        
+        printf("num channels: %d\n", wav.numChannels);
+        printf("sample rate: %d\n", wav.sampleRate);
 
         //check size of data subchunk, read extra bytes if necessary
-        if(input.subChunk1_Size == 18){
+        if(wav.subChunk1_Size == 18){
             short emptyBytes;
             fread(&emptyBytes,1,2, fp);
         }
 
         //data subchunk
-        fread(input.subChunk2_ID,4,1,fp);
-        fread(&(input.subChunk2_Size),4,1,fp);
-        printf("input subchunk2 size: %d\n", input.subChunk2_Size);
+        fread(wav.subChunk2_ID,4,1,fp);
+        fread(&(wav.subChunk2_Size),4,1,fp);
+        printf("subchunk2 size: %d\n", wav.subChunk2_Size);
 
         //calculate bytes per sample, number of samples         
-        int inputBytesPerSample = (input.bitsPerSample)/8;
-        printf("bytes per sample: %d\n", inputBytesPerSample);
-        int inputNumberOfSamples = (input.subChunk2_Size)/inputBytesPerSample; //since subchunk2size = sample data size in bytes
-        printf("number of samples: %d\n", inputNumberOfSamples);
+        int wavBytesPerSample = (wav.bitsPerSample)/8;
+        printf("bytes per sample: %d\n", wavBytesPerSample);
+        int wavNumberOfSamples = (wav.subChunk2_Size)/wavBytesPerSample; //since subchunk2size = sample data size in bytes
+        printf("number of samples: %d\n", wavNumberOfSamples);
 
         //allocate memory for input sample data
-        inputWAVdata = (short*) malloc(sizeof(short) * inputNumberOfSamples);
-        
-        //read the sound data a sample at a time, checking for expected bytes per sample
-        short sampleData = 0;
-        int i = 0;
-        while(fread(&sampleData,1, inputBytesPerSample,fp) == inputBytesPerSample){
-            inputWAVdata[i++] = sampleData;
-            sampleData = 0; //clear for next sample
-            if((i % 100000) == 0)
-                printf("Reading data sample: %d...\n", i);
+        if(signalType == "input"){
+            printf("%s\n", signalType);
+            inputWAVdata = (short*) malloc(sizeof(short) * wavNumberOfSamples);
+
+            //read the sound data a sample at a time, checking for expected bytes per sample
+            short sampleData = 0;
+            int i = 0;
+            while(fread(&sampleData,1, wavBytesPerSample,fp) == wavBytesPerSample){
+                inputWAVdata[i++] = sampleData;
+                sampleData = 0; //clear for next sample
+                if((i % 100000) == 0)
+                    printf("Reading data sample: %d...\n", i);
+            }
+            printf("last read sample: %d\n", i-1);                 
         }
-        printf("last read sample: %d\n", i-1);        
-        
+        else if(signalType == "impulse"){
+            printf("%s\n", signalType);
+            impulseWAVdata = (short*) malloc(sizeof(short) * wavNumberOfSamples);
+            
+            //read the sound data a sample at a time, checking for expected bytes per sample
+            short sampleData = 0;
+            int i = 0;
+            while(fread(&sampleData,1, wavBytesPerSample,fp) == wavBytesPerSample){
+                impulseWAVdata[i++] = sampleData;
+                sampleData = 0; //clear for next sample
+                if((i % 100000) == 0)
+                    printf("Reading data sample: %d...\n", i);
+            }
+            printf("last read sample: %d\n", i-1); 
+        }
+
+         
         //close file
         fclose(fp);
         printf("Finished reading %s!\n", fileName);
