@@ -36,9 +36,13 @@ typedef struct wavFile {
 
 /*Instance variable declarations */
 
-//arrays for holding data from input and IR WAV files
+//arrays for holding data from input, IR and output WAV files
 short* inputWAVdata;
+int input_size;
 short* impulseWAVdata;
+int impulse_size;
+short* outputWAVdata;
+int output_size;
 
 
 //RIFF Chunk Descriptor (outputfile.wav)
@@ -59,7 +63,7 @@ char outputSubChunk2ID[4];
 int outputSubChunk2Size;
 
 /*  Function declarations  */
-void convolve(float x[], int N, float h[], int M, float y[], int P);
+void convolve(short x[], int N, short h[], int M, short y[], int P);
 void print_vector(char *title, float x[], int N);
 int check_fileExtension(char* fileName);
 int readWAV(char* fileName, char* signalType);
@@ -88,11 +92,9 @@ int main(int argc, char *argv[])
     else {
         printf("Correct number of arguments...\n");
 
-
         inputFileName = argv[1];
         impulseFileName = argv[2];
         outputFileName = argv[3];
-
 
         int inputExtension = check_fileExtension(inputFileName);
         int impulseExtension = check_fileExtension(impulseFileName);
@@ -116,39 +118,28 @@ int main(int argc, char *argv[])
             readWAV(inputFileName, "input");
             printf("\n");
             readWAV(impulseFileName, "impulse");
+
+            //print_vector("Output signal using identity IR", output_signal, output_size);
+            
+            
+            //int input_size = sizeof(inputWAVdata);
+            //int impulse_size = sizeof(impulseWAVdata);
+            printf("input size: %d, impulse size: %d\n", input_size, impulse_size);
+
+          
+            output_size = input_size + impulse_size - 1;
+            printf("output size: %d\n", output_size);
+            
+            convolve(inputWAVdata, input_size, impulseWAVdata, impulse_size, outputWAVdata, output_size);
+            printf("done convolution!");
         }
         
         
     }
 
 
-    float input_signal[100], impulse_response[20], output_signal[120];
-    int input_size, impulse_size, output_size;
 
-    /*  Create an example input signal  */
-    input_signal[0] = 1.0;
-    input_signal[1] = 0.5;
-    input_signal[2] = 0.25;
-    input_signal[3] = 0.125;
-    input_size = 4;
-        
-    /*  Print out the input signal to the screen  */
-    //print_vector("Original input signal", input_signal, input_size);
 
-    /*  Create an "identity" impulse response.  The output should be
-        the same as the input when convolved with this  */
-    impulse_response[0] = 1.0;
-    impulse_size = 1;
-
-    /*  Set the expected size of the output signal  */
-    output_size = input_size + impulse_size - 1;
-
-    /*  Do the convolution, and print the output signal  */
-    convolve(input_signal, input_size, impulse_response, impulse_size,
-        output_signal, output_size);
-    //print_vector("Output signal using identity IR", output_signal, output_size);
-
-  
     /*  End of program  */
     return 0;
 }
@@ -173,10 +164,12 @@ int main(int argc, char *argv[])
 *
 *****************************************************************************/
 
-void convolve(float x[], int N, float h[], int M, float y[], int P)
+void convolve(short x[], int N, short h[], int M, short y[], int P)
 {
     int n, m;
 
+    printf("Made it here\n");
+    
     /*  Make sure the output buffer is the right size: P = N + M - 1  */
     if (P != (N + M - 1)) {
         printf("Output signal vector is the wrong size\n");
@@ -297,6 +290,7 @@ int readWAV(char* fileName, char* signalType){
         fread(&(wav.subChunk2_Size),4,1,fp);
         printf("subchunk2 size: %d\n", wav.subChunk2_Size);
 
+                
         //calculate bytes per sample, number of samples         
         int wavBytesPerSample = (wav.bitsPerSample)/8;
         printf("bytes per sample: %d\n", wavBytesPerSample);
@@ -305,6 +299,8 @@ int readWAV(char* fileName, char* signalType){
 
         //allocate memory for input sample data
         if(signalType == "input"){
+            input_size = wav.subChunk2_Size;
+            
             printf("%s\n", signalType);
             inputWAVdata = (short*) malloc(sizeof(short) * wavNumberOfSamples);
 
@@ -317,9 +313,12 @@ int readWAV(char* fileName, char* signalType){
                 if((i % 100000) == 0)
                     printf("Reading data sample: %d...\n", i);
             }
-            printf("last read sample: %d\n", i-1);                 
+            printf("last read sample: %d\n", i-1);     
+            
         }
         else if(signalType == "impulse"){
+            impulse_size = wav.subChunk2_Size;
+            
             printf("%s\n", signalType);
             impulseWAVdata = (short*) malloc(sizeof(short) * wavNumberOfSamples);
             
@@ -333,6 +332,7 @@ int readWAV(char* fileName, char* signalType){
                     printf("Reading data sample: %d...\n", i);
             }
             printf("last read sample: %d\n", i-1); 
+
         }
 
          
