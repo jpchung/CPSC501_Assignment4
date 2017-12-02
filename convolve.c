@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 
 
@@ -63,10 +64,11 @@ char outputSubChunk2ID[4];
 int outputSubChunk2Size;
 
 /*  Function declarations  */
-void convolve(short x[], int N, short h[], int M, short y[], int P);
-void print_vector(char *title, float x[], int N);
 int check_fileExtension(char* fileName);
 int readWAV(char* fileName, char* signalType);
+void convolve(short x[], int N, short h[], int M, short y[], int P);
+void print_vector(char *title, float x[], int N);
+
 
 
 /*****************************************************************************
@@ -129,8 +131,14 @@ int main(int argc, char *argv[])
           
             output_size = input_size + impulse_size - 1;
             printf("output size: %d\n", output_size);
+
+            outputWAVdata = (short*) malloc(sizeof(short) * output_size);
             
+            time_t timeStart,timeEnd;
+            time(&timeStart);
             convolve(inputWAVdata, input_size, impulseWAVdata, impulse_size, outputWAVdata, output_size);
+            time(&timeEnd);
+            double elapsed = difftime(timeEnd, timeStart);
             printf("done convolution!");
         }
         
@@ -168,7 +176,6 @@ void convolve(short x[], int N, short h[], int M, short y[], int P)
 {
     int n, m;
 
-    printf("Made it here\n");
     
     /*  Make sure the output buffer is the right size: P = N + M - 1  */
     if (P != (N + M - 1)) {
@@ -178,16 +185,30 @@ void convolve(short x[], int N, short h[], int M, short y[], int P)
         return;
     }
 
+    printf("Made it here\n");    
+
     /*  Clear the output buffer y[] to all zero values  */  
     for (n = 0; n < P; n++)
-        y[n] = 0.0;
-
+        y[n] = 0;
+    
+    printf("How about here?\n");
+    time_t start = time(NULL);
     /*  Do the convolution  */
     /*  Outer loop:  process each input value x[n] in turn  */
     for (n = 0; n < N; n++) {
         /*  Inner loop:  process x[n] with each sample of h[]  */
-        for (m = 0; m < M; m++)
-        y[n+m] += x[n] * h[m];
+        for (m = 0; m < M; m++){
+            y[n+m] += x[n] * h[m];
+
+            time_t now = time(NULL);
+            time_t diff =  now - start;
+    
+            if((m == 100000) && ((n%200)==0) && ((diff%30) == 0))
+                printf("Convolving %d...\n", (n+m));
+        }
+
+
+        
     }
 }
 
@@ -299,7 +320,8 @@ int readWAV(char* fileName, char* signalType){
 
         //allocate memory for input sample data
         if(signalType == "input"){
-            input_size = wav.subChunk2_Size;
+            //input_size = wav.subChunk2_Size;
+            input_size = wavNumberOfSamples;
             
             printf("%s\n", signalType);
             inputWAVdata = (short*) malloc(sizeof(short) * wavNumberOfSamples);
@@ -317,7 +339,8 @@ int readWAV(char* fileName, char* signalType){
             
         }
         else if(signalType == "impulse"){
-            impulse_size = wav.subChunk2_Size;
+            //impulse_size = wav.subChunk2_Size;
+            impulse_size = wavNumberOfSamples;
             
             printf("%s\n", signalType);
             impulseWAVdata = (short*) malloc(sizeof(short) * wavNumberOfSamples);
