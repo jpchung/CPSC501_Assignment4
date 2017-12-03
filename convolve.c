@@ -66,8 +66,10 @@ int outputSubChunk2Size;
 /*  Function declarations  */
 int check_fileExtension(char* fileName);
 int readWAV(char* fileName, char* signalType);
+int writeWAV(char* fileName);
 void convolve(short x[], int N, short h[], int M, short y[], int P);
 void print_vector(char *title, float x[], int N);
+
 
 
 
@@ -139,7 +141,12 @@ int main(int argc, char *argv[])
             convolve(inputWAVdata, input_size, impulseWAVdata, impulse_size, outputWAVdata, output_size);
             time(&timeEnd);
             double elapsed = difftime(timeEnd, timeStart);
-            printf("done convolution!");
+            printf("DONE convolution in %.2f seconds!\n", elapsed);
+
+            writeWAV(outputFileName);
+            
+
+
         }
         
         
@@ -206,8 +213,6 @@ void convolve(short x[], int N, short h[], int M, short y[], int P)
             if((m == 100000) && ((n%200)==0) && ((diff%30) == 0))
                 printf("Convolving %d...\n", (n+m));
         }
-
-
         
     }
 }
@@ -370,4 +375,65 @@ int readWAV(char* fileName, char* signalType){
     }
 
     return fileFlag;
+}
+
+int writeWAV(char* fileName){
+    int fileFlag = 1;
+
+    FILE* fp = fopen(fileName, "wb");
+    if(fp != NULL){
+
+        struct wavFile wavOut;
+
+        //write WAV file by fields
+        //fwrite(storage pointer, size of elements in bytes, number of elements, filepointer)
+        printf("Writing file: %s...\n", fileName); 
+
+        //RIFF chunk descriptor
+        fwrite(wavOut.chunkID,4,1,fp);
+        fwrite(&(wavOut.chunkSize),4,1,fp);
+        fwrite(wavOut.format,4,1,fp);
+
+        //fmt subchunk
+        fwrite(wavOut.subChunk1_ID,4,1,fp);
+        fwrite(&(wavOut.subChunk1_Size),4,1,fp);
+        fwrite(&(wavOut.audioFormat),2,1,fp);
+        fwrite(&(wavOut.numChannels),2,1,fp);
+        fwrite(&(wavOut.sampleRate),4,1,fp);
+        fwrite(&(wavOut.byteRate),4,1,fp);
+        fwrite(&(wavOut.blockAlign),2,1,fp);
+        fwrite(&(wavOut.bitsPerSample),2,1,fp);
+
+        if(wavOut.subChunk1_Size == 18){
+            short emptyBytes;
+            fwrite(&emptyBytes,1,2,fp);
+        }
+
+        //data subchunk
+        fwrite(wavOut.subChunk2_ID,4,1,fp);
+        fwrite(&(wavOut.subChunk2_Size),4,1,fp);
+
+        //calculate bytes per sample, number of samples
+        int wavOutBytesPerSample = (wavOut.bitsPerSample)/8;
+        int wavOutNumberOfSamples = output_size/wavOutBytesPerSample; //since output size is P = N + M - 1
+
+        //write the output sound data a sample at a time
+        short outSampleData;
+        for(int i = 0; i < wavOutNumberOfSamples; i++){
+            outSampleData = (short) (outputWAVdata[i] * 32767);
+            fwrite((char*) &outSampleData, 1, 2, fp);
+        }
+
+        fclose(fp);
+        printf("Finished writing %s!\n", fileName);
+
+
+        fileFlag = 0;
+    }
+    else{
+        printf("Error writing file %s\n", fileName);
+    }
+    
+    return fileFlag;
+
 }
