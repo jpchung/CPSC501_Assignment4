@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <fstream>
 #include <iostream>
 #include "WavFile.h"
@@ -26,8 +27,8 @@ using namespace std;
 /*Function declarations */
 int checkExtension(char* fileName);
 int setExtensionFlag(int* fileExtensions);
+void convolve(short x[], int N, float h[], int M, short y[], int P);
 void createOutputWAV();
-void convolve(short x[], int N, short h[], int M, short y[], int P);
 
 /*Instance variables */
 WavFile *inputFile;
@@ -79,7 +80,7 @@ int main(int argc, char* argv[]){
 }
 
 
-void convolve(short x[], int N, short h[], int M, short y[], int P){
+void convolve(short x[], int N, float h[], int M, short y[], int P){
     int n, m;
 
     //check size of output buffer for size P = N + M - 1
@@ -90,10 +91,14 @@ void convolve(short x[], int N, short h[], int M, short y[], int P){
         return;        
     }
 
+    //printf("input size: %d, impulse size: %d, output size: %d\n", N, M, P);
+    //printf("size of x: %d", sizeof(x)/sizeof(x[0]));
+
     //clear output buffer
     for(n = 0; n < P; n++){
-        y[n] = 0;
+        y[n] = 0.0;
     }
+
 
     printf("Starting convolution loops...\n");
     clock_t startTime = clock();
@@ -101,8 +106,8 @@ void convolve(short x[], int N, short h[], int M, short y[], int P){
     //Outer loop: process each x[n]
     for(n = 0; n < N; n++){
         //inner loop: process each h[m] for current x[n]
-        for(m = 0; m < M; n++){
-            y[n+m] += x[n] * h[m];
+        for(m = 0; m < M; m++){
+            y[n+m] += (short) (x[n] * h[m]);
 
             //provide periodic printout for long convolution
             clock_t currentTime = clock();
@@ -156,10 +161,23 @@ void createOutputWAV(){
     short* outputSignal = new short[outputSize];
 
     printf("made it here...\n");
+    
     //TODO: normalize impulse before convolving
+    float* hFloat = new float[impulseFile->signalSize];
+    for(int i = 0; i < impulseFile->signalSize; i++){
+        hFloat[i] = (float)impulseFile->signal[i] / pow(2,impulseFile->bitsPerSample);
+    }
+    
     
     //TODO: convolve the signals
-
+    clock_t startTime = clock();
+    
+    convolve(inputFile->signal, inputFile->signalSize, hFloat, impulseFile->signalSize, outputSignal, outputSize);
+    
+    clock_t endTime = clock();
+    clock_t elapsedTime = endTime - startTime;
+    printf("DONE convolution in %.2f seconds!\n\n", elapsedTime);
+   
     //TODO: open file stream 
 
     //TODO: write header for output WAV file
