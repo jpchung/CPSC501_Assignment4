@@ -21,14 +21,23 @@
 
 using namespace std;
 
+/*CONSTANTS */
 #define DEBUG_MODE
+#define SAMPLE_RATE			44100.0
+#define BITS_PER_SAMPLE		16
+#define BYTES_PER_SAMPLE	(BITS_PER_SAMPLE/8)
+#define MONOPHONIC			1
+#define STEREOPHONIC		2
 
 
 /*Function declarations */
 int checkExtension(char* fileName);
 int setExtensionFlag(int* fileExtensions);
 void convolve(short x[], int N, float h[], int M, short y[], int P);
-void createOutputWAV();
+void createOutputWAV(char* fileName);
+void writeWAVHeader(int numChannels,int numSamples, int sampleRate, FILE *outputFile);
+size_t fwriteIntLSB(int data, FILE *fileStream);
+size_t fwriteShortLSB(short data, FILE* fileStream);
 
 /*Instance variables */
 WavFile *inputFile;
@@ -74,7 +83,7 @@ int main(int argc, char* argv[]){
 
             printf("\nInput Size: %d, Impulse Size: %d\n", inputFile->signalSize, impulseFile->signalSize);
 
-            createOutputWAV();
+            createOutputWAV(outputFileName);
         }
     }
 }
@@ -101,7 +110,7 @@ void convolve(short x[], int N, float h[], int M, short y[], int P){
 
 
     printf("Starting convolution loops...\n");
-    clock_t startTime = clock();
+    time_t startTime = time(NULL);
 
     //Outer loop: process each x[n]
     for(n = 0; n < N; n++){
@@ -110,8 +119,8 @@ void convolve(short x[], int N, float h[], int M, short y[], int P){
             y[n+m] += (short) (x[n] * h[m]);
 
             //provide periodic printout for long convolution
-            clock_t currentTime = clock();
-            clock_t elapsedTime = currentTime - startTime;
+            time_t currentTime = time(NULL);
+            time_t elapsedTime = currentTime - startTime;
             
             if((m == 100000) && ((n%200)==0) && ((elapsedTime%30) == 0)){
                 printf("Convolving %d...\n", (n+m));
@@ -155,30 +164,33 @@ int setExtensionFlag(int* fileExtensions){
     return flag;
 }
 
-void createOutputWAV(){
+void createOutputWAV(char* fileName){
     //P = N + M -1
     int outputSize = (inputFile->signalSize) + (impulseFile->signalSize) - 1;
     short* outputSignal = new short[outputSize];
 
     printf("made it here...\n");
     
-    //TODO: normalize impulse before convolving
+    //normalize impulse before convolving
     float* hFloat = new float[impulseFile->signalSize];
     for(int i = 0; i < impulseFile->signalSize; i++){
         hFloat[i] = (float)impulseFile->signal[i] / pow(2,impulseFile->bitsPerSample);
     }
     
     
-    //TODO: convolve the signals
-    clock_t startTime = clock();
+    //convolve the signals
+    time_t startTime, endTime;
+    time(&startTime);
     
     convolve(inputFile->signal, inputFile->signalSize, hFloat, impulseFile->signalSize, outputSignal, outputSize);
     
-    clock_t endTime = clock();
-    clock_t elapsedTime = endTime - startTime;
-    printf("DONE convolution in %.2f seconds!\n\n", elapsedTime);
+    time(&endTime);
+    double elapsed = difftime(endTime, startTime);
+    printf("DONE convolution in %.2f seconds!\n\n", elapsed);
    
     //TODO: open file stream 
+    FILE* outputFile = fopen(fileName, "wb");
+
 
     //TODO: write header for output WAV file
         //use fputs for big endian?
@@ -187,6 +199,61 @@ void createOutputWAV(){
     //TODO: write convolved output signal into output WAV file
 
     //TODO: close file stream
+    fclose(outputFile);
 }
+
+void writeWAVHeader(int numChannels, int numSamples, int bitsPerSample, int sampleRate, FILE *outputFile){
+
+    //calculations for header fields
+
+    //subchunk sizes
+    int subChunk2Size = numChannels * numSamples * (bitsPerSample/8); 
+    int chunkSize = 36 + subChunk2Size; //36 is sum of all field sizes before data
+    
+    //number of bytes for one sample after accounting all channels (frame size)
+    short blockAlign = numChannels * (bitsPerSample/8);
+    
+    //bytes per second  = sample rate * total bytes per sample
+    int byteRate = (int) sampleRate * blockAlign;
+
+    //write header to file
+
+    //RIFF chunk descriptor
+    fputs("RIFF", outputFile);
+
+    
+
+}
+
+
+size_t fwriteIntLSB(int data, FILE *fileStream){
+
+    unsigned char charArray[4];
+
+    //write int (4 bytes) into fileStream in little-endian
+    //little endian writes from least significant byte (LSB) first
+    charArray[3] = (unsigned char)((data >> 24) & 0xFF);
+    charArray[2] = (unsigned char)((data >> 16) & 0xFF);
+    charArray[1] = (unsigned char)((data >> 8) & 0xFF);
+    charArray[0] = (unsigned char)(data & 0xFF);
+
+    //use charArray to write values as characters to file
+    return fwrite(charArray, sizeof(unsigned char), 4, fileStream);
+}
+
+
+size_t fwriteShortLSB(short data, FILE* fileStream){
+
+    unsigned char charArray[2];
+
+    //write short (2 bytes) into fileStream in little-endian
+    //little endian writes from least significant byte (LSB) first
+    charArray[1] = (unsigned char)((data >> 8) & 0xFF);
+    charArray[0] = (unsigned char)(data & 0xFF);
+
+    //use charArray to write values as characters to file
+    return fwrite(charArray, sizeof(unsigned char), 2, fileStream);
+}
+
 
 
