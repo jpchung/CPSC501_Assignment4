@@ -50,7 +50,6 @@ int output_size;
 
 
 
-
 /*  Function declarations  */
 int check_fileExtension(char* fileName);
 int readWAV(char* fileName, char* signalType);
@@ -112,12 +111,8 @@ int main(int argc, char *argv[])
             readWAV(impulseFileName, "impulse");
 
             //print_vector("Output signal using identity IR", output_signal, output_size);
-            
-            
-            //int input_size = sizeof(inputWAVdata);
-            //int impulse_size = sizeof(impulseWAVdata);
-            printf("input size: %d, impulse size: %d\n", input_size, impulse_size);
 
+            printf("input size: %d, impulse size: %d\n", input_size, impulse_size);
           
             output_size = input_size + impulse_size - 1;
             printf("output size: %d\n", output_size);
@@ -297,9 +292,7 @@ int readWAV(char* fileName, char* signalType){
         fread(wav.chunkID,4,1,fp);
         fread(&(wav.chunkSize),4,1,fp);
         fread(wav.format,4,1,fp);
-
-        printf("chunk size:  %d\n", wav.chunkSize);
-        
+       
         //fmt subchunk
         fread(wav.subChunk1_ID,4,1,fp);
         fread(&(wav.subChunk1_Size),4,1,fp); 
@@ -310,10 +303,17 @@ int readWAV(char* fileName, char* signalType){
         fread(&(wav.blockAlign),2,1,fp); 
         fread(&(wav.bitsPerSample),2,1,fp); 
 
+        printf("chunk ID: %s\n", wav.chunkID);
+        printf("chunk size:  %d\n", wav.chunkSize);
+        printf("format: %s\n", wav.format);
+
+        printf("subchunk1 ID: %s", wav.subChunk1_ID);
         printf("subchunk1 size: %d\n", wav.subChunk1_Size);
         printf("audio format: %d\n", wav.audioFormat);        
         printf("num channels: %d\n", wav.numChannels);
         printf("sample rate: %d\n", wav.sampleRate);
+        printf("byte rate: %d\n", wav.byteRate);
+        printf("bits per sample %d\n", wav.bitsPerSample);
 
         //check size of data subchunk, read extra bytes if necessary
         if(wav.subChunk1_Size == 18){
@@ -324,6 +324,7 @@ int readWAV(char* fileName, char* signalType){
         //data subchunk
         fread(wav.subChunk2_ID,4,1,fp);
         fread(&(wav.subChunk2_Size),4,1,fp);
+        printf("subchunk2 ID: %s", wav.subChunk2_ID);
         printf("subchunk2 size: %d\n", wav.subChunk2_Size);
 
                 
@@ -393,7 +394,7 @@ int writeWAV(char* fileName){
     FILE* fp = fopen(fileName, "wb");
     if(fp != NULL){
 
-        //struct wavHeader wavOut;
+        struct wavHeader wavOut;
 
         //write WAV file by fields
         //fwrite(storage pointer, size of elements in bytes, number of elements, filepointer)
