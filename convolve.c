@@ -48,16 +48,15 @@ short* outputWAVdata;
 double* yDouble;
 int output_size;
 
-
+struct wavHeader outputHeader;
+struct wavHeader inputHeader;
+struct wavHeader impulseHeader;
 
 /*  Function declarations  */
 int check_fileExtension(char* fileName);
 int readWAV(char* fileName, char* signalType);
 int writeWAV(char* fileName);
 void convolve(short x[], int N, short h[], int M, short y[], int P);
-void print_vector(char *title, float x[], int N);
-
-
 
 
 /*****************************************************************************
@@ -201,14 +200,14 @@ void convolve(short x[], int N, short h[], int M, short y[], int P)
     for(n = 0; n < P; n++)
         yDouble[n] = 0.0;
 
-    printf("about to start convolution loops...\n");
+    printf("Starting convolution loops...\n");
     time_t start = time(NULL);
     /*  Do the convolution  */
     /*  Outer loop:  process each input value x[n] in turn  */
     for (n = 0; n < N; n++) {
         /*  Inner loop:  process x[n] with each sample of h[]  */
         for (m = 0; m < M; m++){
-            yDouble[n+m] = xDouble[n] * hDouble[m];
+            yDouble[n+m] += xDouble[n] * hDouble[m];
             //y[n+m] += x[n] * h[m];
             y[n+m] = (short) (yDouble[n+m] * 32768); 
 
@@ -223,29 +222,6 @@ void convolve(short x[], int N, short h[], int M, short y[], int P)
 }
 
 
-
-/*****************************************************************************
-*
-*    Function:     print_vector
-*
-*    Description:  Prints the vector out to the screen
-*
-*    Parameters:   title is a string naming the vector
-*                  x[] is the vector to be printed out
-*                  N is the number of samples in the vector x[]
-*
-*****************************************************************************/
-
-void print_vector(char *title, float x[], int N)
-{
-  int i;
-
-  printf("\n%s\n", title);
-  printf("Vector size:  %-d\n", N);
-  printf("Sample Number \tSample Value\n");
-  for (i = 0; i < N; i++)
-    printf("%-d\t\t%f\n", i, x[i]);
-}
 
 /**
  * Function: check_fileExtension
@@ -304,16 +280,16 @@ int readWAV(char* fileName, char* signalType){
         fread(&(wav.bitsPerSample),2,1,fp); 
 
         printf("chunk ID: %s\n", wav.chunkID);
-        printf("chunk size:  %d\n", wav.chunkSize);
+        printf("chunk size: %d\n", wav.chunkSize);
         printf("format: %s\n", wav.format);
 
-        printf("subchunk1 ID: %s", wav.subChunk1_ID);
+        printf("subchunk1 ID: %s\n", wav.subChunk1_ID);
         printf("subchunk1 size: %d\n", wav.subChunk1_Size);
         printf("audio format: %d\n", wav.audioFormat);        
         printf("num channels: %d\n", wav.numChannels);
         printf("sample rate: %d\n", wav.sampleRate);
         printf("byte rate: %d\n", wav.byteRate);
-        printf("bits per sample %d\n", wav.bitsPerSample);
+        printf("bits per sample: %d\n", wav.bitsPerSample);
 
         //check size of data subchunk, read extra bytes if necessary
         if(wav.subChunk1_Size == 18){
@@ -324,7 +300,7 @@ int readWAV(char* fileName, char* signalType){
         //data subchunk
         fread(wav.subChunk2_ID,4,1,fp);
         fread(&(wav.subChunk2_Size),4,1,fp);
-        printf("subchunk2 ID: %s", wav.subChunk2_ID);
+        printf("subchunk2 ID: %s\n", wav.subChunk2_ID);
         printf("subchunk2 size: %d\n", wav.subChunk2_Size);
 
                 
@@ -338,6 +314,7 @@ int readWAV(char* fileName, char* signalType){
         if(signalType == "input"){
             //input_size = wav.subChunk2_Size;
             input_size = wavNumberOfSamples;
+            inputHeader = wav;
             
             printf("%s\n", signalType);
             inputWAVdata = (short*) malloc(sizeof(short) * wavNumberOfSamples);
@@ -357,6 +334,7 @@ int readWAV(char* fileName, char* signalType){
         else if(signalType == "impulse"){
             //impulse_size = wav.subChunk2_Size;
             impulse_size = wavNumberOfSamples;
+            impulseHeader = wav;
             
             printf("%s\n", signalType);
             impulseWAVdata = (short*) malloc(sizeof(short) * wavNumberOfSamples);
@@ -394,14 +372,21 @@ int writeWAV(char* fileName){
     FILE* fp = fopen(fileName, "wb");
     if(fp != NULL){
 
-        struct wavHeader wavOut;
+        //make header
+        
+        outputHeader.chunkID[0] = 'R';
+        outputHeader.chunkID[1] = 'I';
+        outputHeader.chunkID[2] = 'F';
+        outputHeader.chunkID[3] = 'F';
+
 
         //write WAV file by fields
         //fwrite(storage pointer, size of elements in bytes, number of elements, filepointer)
         printf("Writing file: %s...\n", fileName); 
+        
 
         //RIFF chunk descriptor
-        fwrite("RIFF",4,1,fp);
+        fwrite(wavOut.chunkID,4,1,fp);
         fwrite(&(wavOut.chunkSize),4,1,fp);
         fwrite(wavOut.format,4,1,fp);
 
