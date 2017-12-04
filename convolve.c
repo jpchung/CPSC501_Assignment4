@@ -18,7 +18,7 @@
 
 
 /*Data structure definition for WAVE file format*/
-typedef struct wavFile {
+typedef struct wavHeader {
     char chunkID[4];
     int chunkSize;
     char format[4];
@@ -32,36 +32,24 @@ typedef struct wavFile {
     short bitsPerSample;
     char subChunk2_ID[4];
     int subChunk2_Size;
-} wavFile;
+} wavHeader;
 
 
 /*Instance variable declarations */
 
 //arrays for holding data from input, IR and output WAV files
 short* inputWAVdata;
+double* xDouble;
 int input_size;
 short* impulseWAVdata;
+double* hDouble;
 int impulse_size;
 short* outputWAVdata;
+double* yDouble;
 int output_size;
 
 
-//RIFF Chunk Descriptor (outputfile.wav)
-char outputChunkID[4];
-int outputChunkSize;
-char outputFormat[4];
-//fmt subchunk (outputfile.wav)
-char outputSubChunk1ID[4];
-int outputSubChunk1Size;
-short outputAudioFormat;
-short outputNumChannels;
-int outputSampleRate;
-int outputByteRate;
-short outputBlockAlign;
-short outputBitsPerSample;
-//data subchunk (outputfile.wav)
-char outputSubChunk2ID[4];
-int outputSubChunk2Size;
+
 
 /*  Function declarations  */
 int check_fileExtension(char* fileName);
@@ -120,7 +108,7 @@ int main(int argc, char *argv[])
         else {
             //read input wav file
             readWAV(inputFileName, "input");
-            printf("\n");
+            //printf("\n");
             readWAV(impulseFileName, "impulse");
 
             //print_vector("Output signal using identity IR", output_signal, output_size);
@@ -141,7 +129,8 @@ int main(int argc, char *argv[])
             convolve(inputWAVdata, input_size, impulseWAVdata, impulse_size, outputWAVdata, output_size);
             time(&timeEnd);
             double elapsed = difftime(timeEnd, timeStart);
-            printf("DONE convolution in %.2f seconds!\n", elapsed);
+            printf("DONE convolution in %.2f seconds!\n\n", elapsed);
+
 
             writeWAV(outputFileName);
             
@@ -192,20 +181,41 @@ void convolve(short x[], int N, short h[], int M, short y[], int P)
         return;
     }
 
-    printf("Made it here\n");    
+
+    xDouble = malloc(sizeof(double) * N);
+    for(int i = 0; i < N; i++){
+        xDouble[i] = (double) x[i]/32768.0;
+    }
+
+    hDouble =  malloc(sizeof(double) * M);
+    for (int i = 0; i < M; i++){
+        hDouble[i] = (double) h[i]/32768.0;
+    }
+
+    yDouble = malloc(sizeof(double) * P);
+
+
+    printf("converted to float?\n");
+
+    //printf("Made it here\n");    
 
     /*  Clear the output buffer y[] to all zero values  */  
     for (n = 0; n < P; n++)
         y[n] = 0;
-    
-    printf("How about here?\n");
+        
+    for(n = 0; n < P; n++)
+        yDouble[n] = 0.0;
+
+    printf("about to start convolution loops...\n");
     time_t start = time(NULL);
     /*  Do the convolution  */
     /*  Outer loop:  process each input value x[n] in turn  */
     for (n = 0; n < N; n++) {
         /*  Inner loop:  process x[n] with each sample of h[]  */
         for (m = 0; m < M; m++){
-            y[n+m] += x[n] * h[m];
+            yDouble[n+m] = xDouble[n] * hDouble[m];
+            //y[n+m] += x[n] * h[m];
+            y[n+m] = (short) (yDouble[n+m] * 32768); 
 
             time_t now = time(NULL);
             time_t diff =  now - start;
@@ -277,7 +287,7 @@ int readWAV(char* fileName, char* signalType){
     FILE* fp = fopen(fileName, "rb");
     if(fp != NULL){
 
-        struct wavFile wav;
+        struct wavHeader wav;
 
         //read WAV file by fields
         //fread(storage pointer, size of bytes, n times to read, filepointer)
@@ -337,8 +347,8 @@ int readWAV(char* fileName, char* signalType){
             while(fread(&sampleData,1, wavBytesPerSample,fp) == wavBytesPerSample){
                 inputWAVdata[i++] = sampleData;
                 sampleData = 0; //clear for next sample
-                if((i % 100000) == 0)
-                    printf("Reading data sample: %d...\n", i);
+                //if((i % 100000) == 0)
+                //    printf("Reading data sample: %d...\n", i);
             }
             printf("last read sample: %d\n", i-1);     
             
@@ -356,8 +366,8 @@ int readWAV(char* fileName, char* signalType){
             while(fread(&sampleData,1, wavBytesPerSample,fp) == wavBytesPerSample){
                 impulseWAVdata[i++] = sampleData;
                 sampleData = 0; //clear for next sample
-                if((i % 100000) == 0)
-                    printf("Reading data sample: %d...\n", i);
+                //if((i % 100000) == 0)
+                //    printf("Reading data sample: %d...\n", i);
             }
             printf("last read sample: %d\n", i-1); 
 
@@ -366,7 +376,7 @@ int readWAV(char* fileName, char* signalType){
          
         //close file
         fclose(fp);
-        printf("Finished reading %s!\n", fileName);
+        printf("Finished reading %s!\n\n", fileName);
 
         fileFlag = 0;
     }
@@ -383,17 +393,18 @@ int writeWAV(char* fileName){
     FILE* fp = fopen(fileName, "wb");
     if(fp != NULL){
 
-        struct wavFile wavOut;
+        //struct wavHeader wavOut;
 
         //write WAV file by fields
         //fwrite(storage pointer, size of elements in bytes, number of elements, filepointer)
         printf("Writing file: %s...\n", fileName); 
 
         //RIFF chunk descriptor
-        fwrite(wavOut.chunkID,4,1,fp);
+        fwrite("RIFF",4,1,fp);
         fwrite(&(wavOut.chunkSize),4,1,fp);
         fwrite(wavOut.format,4,1,fp);
 
+        printf("file write check 1\n");
         //fmt subchunk
         fwrite(wavOut.subChunk1_ID,4,1,fp);
         fwrite(&(wavOut.subChunk1_Size),4,1,fp);
@@ -404,6 +415,7 @@ int writeWAV(char* fileName){
         fwrite(&(wavOut.blockAlign),2,1,fp);
         fwrite(&(wavOut.bitsPerSample),2,1,fp);
 
+        printf("file write check 2\n");
         if(wavOut.subChunk1_Size == 18){
             short emptyBytes;
             fwrite(&emptyBytes,1,2,fp);
@@ -413,14 +425,21 @@ int writeWAV(char* fileName){
         fwrite(wavOut.subChunk2_ID,4,1,fp);
         fwrite(&(wavOut.subChunk2_Size),4,1,fp);
 
+        printf("file write check 3\n");
         //calculate bytes per sample, number of samples
         int wavOutBytesPerSample = (wavOut.bitsPerSample)/8;
         int wavOutNumberOfSamples = output_size/wavOutBytesPerSample; //since output size is P = N + M - 1
+        
+
 
         //write the output sound data a sample at a time
         short outSampleData;
-        for(int i = 0; i < wavOutNumberOfSamples; i++){
-            outSampleData = (short) (outputWAVdata[i] * 32767);
+        for(int i = 0; i < output_size; i++){
+        //for(int i = 0; i < wavOutNumberOfSamples; i++){
+            printf("pls work...\n");
+            //outSampleData = (short) (outputWAVdata[i] * 32767);
+            outSampleData = (short) outputWAVdata[i];
+            
             fwrite((char*) &outSampleData, 1, 2, fp);
         }
 
