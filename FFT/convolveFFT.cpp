@@ -34,6 +34,7 @@ void writeWAVHeader(int numChannels, int numSamples, int bitsPerSample, int samp
 size_t fwriteIntLSB(int data, FILE *fileStream);
 size_t fwriteShortLSB(short data, FILE* fileStream);
 void signalToDouble(WavFile* wav,double signalDouble[]);
+int isPowerOfTwo(int num);
 
 int main(int argc, char* argv[]){
 
@@ -122,7 +123,17 @@ int main(int argc, char* argv[]){
             printf("Max length of signals: %d\n", maxLength);
             //TODO: pad to equal length, check for power of 2
 
+            //check if maxLength is power of 2
+            int maxLengthPow2 = 0;
+            if(isPowerOfTwo(maxLength) != 1){
+                printf("%d NOT a power of 2\n", maxLength);
 
+            }
+            else{
+                printf("%d is power of 2\n", maxLength);
+                maxLengthPow2 = maxLength;
+            }
+            
 
 
 
@@ -240,4 +251,21 @@ void signalToDouble(WavFile* wav,double signalDouble[]){
     for(int i = 0; i < wav->signalSize; i++){
         signalDouble[i] = ((double) wav->signal[i])/32678.0;
     }
+}
+
+
+//check if a number is a power of 2 (divisible by 2 n times)
+int isPowerOfTwo(int num){
+    if(num == 0)
+        return 0;
+
+    //keep dividing num by 2 until num is 1 or num not divisible by 2
+    while(num != 1){
+        if((num%2) != 0)
+            return 0;
+        else
+            num = num/2;
+    }
+
+    return 1;
 }
