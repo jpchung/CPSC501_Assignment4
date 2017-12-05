@@ -93,7 +93,7 @@ int main(int argc, char* argv[]){
             //TODO: Time to Freq Domain transformation (four1 FFT)
             //TODO: Freq Domain convolution (complex multiplication)
             //TODO: inverse FFT (four1)
-            //TODO: normalize result
+            //TODO: normalize/scale result
             //TODO: write to file
             
             /* 1.turn Time Domain signals x[n], h[n] into Freq Domain arrays X[k], H[k] */
@@ -125,15 +125,28 @@ int main(int argc, char* argv[]){
 
             //check if maxLength is power of 2
             int maxLengthPow2 = 0;
+            int pow2 = 0; //minimum power of 2 to produce length at least as large as maxLength
             if(isPowerOfTwo(maxLength) != 1){
                 printf("%d NOT a power of 2\n", maxLength);
-
+                //log2 truncated when cast from double to int, so add 1 for next closest power
+                pow2 = (int) log2(maxLength) + 1;
+                maxLengthPow2 = (int) pow(2,pow2);
+                printf("minimum power: 2^(%d) = %d\n", pow2, maxLengthPow2);
             }
             else{
                 printf("%d is power of 2\n", maxLength);
+                pow2 = (int) log2(maxLength);                
                 maxLengthPow2 = maxLength;
             }
+
+            //X[k],H[k] have real & imaginary parts, so length  = maxLength * 2
+            //real part is signal, imaginary part should be set to 0's
+            double* freqX = new double[maxLengthPow2 *2];
+            double* freqH = new double[maxLengthPow2 *2];
             
+            //TODO: initialize X[k],H[k] to all zeroes for imaginary part
+
+            //TODO: rewrite every other index with respective signal for real part
 
 
 

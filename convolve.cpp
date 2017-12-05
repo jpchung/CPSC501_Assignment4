@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <limits.h>
 #include <fstream>
 #include <iostream>
 #include "WavFile.h"
@@ -114,8 +115,9 @@ void convolve(short x[], int N, float h[], int M, short y[], int P){
     for(n = 0; n < N; n++){
         //inner loop: process each h[m] for current x[n]
         for(m = 0; m < M; m++){
+            
             y[n+m] += (short) (x[n] * h[m]);
-
+        
             //provide periodic printout for long convolution
             time_t currentTime = time(NULL);
             time_t elapsedTime = currentTime - startTime;
@@ -170,9 +172,13 @@ void createOutputWAV(char* fileName){
     //normalize impulse before convolving
     float* hFloat = new float[impulseFile->signalSize];
     for(int i = 0; i < impulseFile->signalSize; i++){
-        hFloat[i] = (float)impulseFile->signal[i] / pow(2,impulseFile->bitsPerSample);
+        //hFloat[i] = (float)impulseFile->signal[i] / pow(2,((impulseFile->bitsPerSample)- 1)); 
+        //hFloat[i] = (float) impulseFile->signal[i] / 32768;
+        hFloat[i] = (float) impulseFile->signal[i] / pow(2,(impulseFile->bitsPerSample));
     }
-    
+
+    //TODO: turn input signal into double
+    //TODO: scale both double arrays by 0.6 - 0.8 to get rid of crackling/clipping
     
     //convolve the signals
     time_t startTime, endTime;
@@ -202,7 +208,7 @@ void createOutputWAV(char* fileName){
     }
 
     printf("Done writing %s!\n", fileName);
-    
+
     //close file stream
     fclose(outputFile);
 }
