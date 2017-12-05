@@ -23,11 +23,6 @@ using namespace std;
 
 /*CONSTANTS */
 #define DEBUG_MODE
-#define SAMPLE_RATE			44100.0
-#define BITS_PER_SAMPLE		16
-#define BYTES_PER_SAMPLE	(BITS_PER_SAMPLE/8)
-#define MONOPHONIC			1
-#define STEREOPHONIC		2
 
 
 /*Function declarations */
@@ -35,7 +30,7 @@ int checkExtension(char* fileName);
 int setExtensionFlag(int* fileExtensions);
 void convolve(short x[], int N, float h[], int M, short y[], int P);
 void createOutputWAV(char* fileName);
-void writeWAVHeader(int numChannels,int numSamples, int sampleRate, FILE *outputFile);
+void writeWAVHeader(int numChannels, int numSamples, int bitsPerSample, int sampleRate, FILE *outputFile);
 size_t fwriteIntLSB(int data, FILE *fileStream);
 size_t fwriteShortLSB(short data, FILE* fileStream);
 
@@ -168,9 +163,7 @@ void createOutputWAV(char* fileName){
     //P = N + M -1
     int outputSize = (inputFile->signalSize) + (impulseFile->signalSize) - 1;
     short* outputSignal = new short[outputSize];
-
-    printf("made it here...\n");
-    
+   
     //normalize impulse before convolving
     float* hFloat = new float[impulseFile->signalSize];
     for(int i = 0; i < impulseFile->signalSize; i++){
@@ -193,8 +186,10 @@ void createOutputWAV(char* fileName){
 
 
     //TODO: write header for output WAV file
-        //use fputs for big endian?
-        //write separate functions for little endians (shorts and ints)?
+    printf("Writing WAV header for %s", fileName);
+    writeWAVHeader(inputFile->numChannels, outputSize, inputFile->bitsPerSample, inputFile->sampleRate, outputFile);
+
+    printf("made it here...?\n");
 
     //TODO: write convolved output signal into output WAV file
 
@@ -217,11 +212,26 @@ void writeWAVHeader(int numChannels, int numSamples, int bitsPerSample, int samp
     int byteRate = (int) sampleRate * blockAlign;
 
     //write header to file
+    //use fputs for big endian fields, use respective LSB methods for little endian
 
     //RIFF chunk descriptor
     fputs("RIFF", outputFile);
-
+    fwriteIntLSB(chunkSize, outputFile);
+    fputs("WAVE", outputFile);
     
+    //fmt subchunk
+    fputs("fmt ", outputFile);
+    fwriteIntLSB(16, outputFile); //subchunk1size should be fixed 16 bytes
+    fwriteShortLSB(1, outputFile); // AudioFormat = 1 for PCM
+    fwriteShortLSB(numChannels, outputFile);
+    fwriteIntLSB(sampleRate, outputFile);
+    fwriteIntLSB(byteRate, outputFile);
+    fwriteShortLSB(blockAlign, outputFile);
+    fwriteShortLSB(bitsPerSample, outputFile);
+
+    //data subchunk
+    fputs("data", outputFile);
+    fwriteIntLSB(subChunk2Size, outputFile);
 
 }
 
