@@ -78,7 +78,10 @@ int main(int argc, char* argv[]){
 
             printf("\nInput Size: %d, Impulse Size: %d\n", inputFile->signalSize, impulseFile->signalSize);
 
+            //convolve and generate output WAV file
             createOutputWAV(outputFileName);
+
+            return 0;
         }
     }
 }
@@ -181,19 +184,26 @@ void createOutputWAV(char* fileName){
     double elapsed = difftime(endTime, startTime);
     printf("DONE convolution in %.2f seconds!\n\n", elapsed);
    
-    //TODO: open file stream 
+    //open file stream 
     FILE* outputFile = fopen(fileName, "wb");
 
 
-    //TODO: write header for output WAV file
-    printf("Writing WAV header for %s", fileName);
+    //write header for output WAV file
+    printf("Writing WAV header for %s...\n", fileName);
     writeWAVHeader(inputFile->numChannels, outputSize, inputFile->bitsPerSample, inputFile->sampleRate, outputFile);
 
-    printf("made it here...?\n");
 
-    //TODO: write convolved output signal into output WAV file
+    
+    //write convolved output signal into output WAV file
+    //use LSB method since signal is short array
+    printf("Writing convolved signal to %s\n", fileName);
+    for(int i = 0; i < outputSize; i++){
+        fwriteShortLSB(outputSignal[i], outputFile);
+    }
 
-    //TODO: close file stream
+    printf("Done writing %s!\n", fileName);
+    
+    //close file stream
     fclose(outputFile);
 }
 
