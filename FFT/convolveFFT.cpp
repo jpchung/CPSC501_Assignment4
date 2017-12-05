@@ -33,6 +33,7 @@ int setExtensionFlag(int* fileExtensions);
 void writeWAVHeader(int numChannels, int numSamples, int bitsPerSample, int sampleRate, FILE *outputFile);
 size_t fwriteIntLSB(int data, FILE *fileStream);
 size_t fwriteShortLSB(short data, FILE* fileStream);
+void signalToDouble(WavFile* wav,double signalDouble[]);
 
 int main(int argc, char* argv[]){
 
@@ -74,10 +75,7 @@ int main(int argc, char* argv[]){
             impulseFile->readWAV(impulseFileName);
 
             printf("\nInput Size: %d, Impulse Size: %d\n", inputFile->signalSize, impulseFile->signalSize);
-        
-            //get signals for x[n], h[m]
-            //need double arrays for DFT/FFT
-
+            
             /*
             CONVOLUTION USING FFT
             1. turn Time Domain signals x[n], h[n] into Freq Domain arrays X[k], H[k]
@@ -96,6 +94,37 @@ int main(int argc, char* argv[]){
             //TODO: inverse FFT (four1)
             //TODO: normalize result
             //TODO: write to file
+            
+            /* 1.turn Time Domain signals x[n], h[n] into Freq Domain arrays X[k], H[k] */
+             
+            //turn x[n], h[n] signals into double arrays (need for FFT)
+            double x[inputFile->signalSize];
+            double h[impulseFile->signalSize];
+
+            signalToDouble(inputFile, x);
+            signalToDouble(impulseFile, h);
+
+            printf("converted signals to double\n");
+
+            //zero-pad arrays so that:
+            //x[n] and h[n] have same length
+            //length is a power of 2 (need for FFT)
+            //length is long enough to avoid circular convolution
+            int sizeFreqX = inputFile->signalSize;
+            int sizeFreqH = impulseFile->signalSize;
+            
+            int maxLength = 0;
+            if(sizeFreqX <= sizeFreqH)
+                maxLength = sizeFreqH;
+            else
+                maxLength = sizeFreqX;
+
+            printf("Max length of signals: %d\n", maxLength);
+            //TODO: pad to equal length, check for power of 2
+
+
+
+
 
         }
     }
@@ -204,4 +233,11 @@ size_t fwriteShortLSB(short data, FILE* fileStream){
 
     //use charArray to write values as characters to file
     return fwrite(charArray, sizeof(unsigned char), 2, fileStream);
+}
+
+
+void signalToDouble(WavFile* wav,double signalDouble[]){
+    for(int i = 0; i < wav->signalSize; i++){
+        signalDouble[i] = ((double) wav->signal[i])/32678.0;
+    }
 }
