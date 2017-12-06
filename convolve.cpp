@@ -30,6 +30,7 @@ using namespace std;
 int checkExtension(char* fileName);
 int setExtensionFlag(int* fileExtensions);
 void convolve(short x[], int N, float h[], int M, short y[], int P);
+void convolve2(double x[], int N, double h[], int M, double y[], int P);
 void createOutputWAV(char* fileName);
 void writeWAVHeader(int numChannels, int numSamples, int bitsPerSample, int sampleRate, FILE *outputFile);
 size_t fwriteIntLSB(int data, FILE *fileStream);
@@ -168,27 +169,44 @@ void createOutputWAV(char* fileName){
     //P = N + M -1
     int outputSize = (inputFile->signalSize) + (impulseFile->signalSize) - 1;
     short* outputSignal = new short[outputSize];
+    double* yDouble = new double[outputSize];
    
     //normalize impulse before convolving
-    float* hFloat = new float[impulseFile->signalSize];
+    double* hDouble = new double[impulseFile->signalSize];
     for(int i = 0; i < impulseFile->signalSize; i++){
         //hFloat[i] = (float)impulseFile->signal[i] / pow(2,((impulseFile->bitsPerSample)- 1)); 
-        //hFloat[i] = (float) impulseFile->signal[i] / 32768;
-        hFloat[i] = (float) impulseFile->signal[i] / pow(2,(impulseFile->bitsPerSample));
+        hDouble[i] = ((double) impulseFile->signal[i]) / 32768.0;
+        //hFloat[i] = (float) impulseFile->signal[i] / pow(2,(impulseFile->bitsPerSample));
+        hDouble[i] = 0.5 * hDouble[i];
     }
 
     //TODO: turn input signal into double
+    double* xDouble = new double[inputFile->signalSize];
+    for(int i = 0; i < inputFile->signalSize; i++){
+        //xFloat[i] = (float) inputFile->signal[i] / pow(2,(inputFile->bitsPerSample));
+        xDouble[i] = (double) inputFile->signal[i] / 32768.0;
+        xDouble[i] = 0.5 * xDouble[i];
+    }
     //TODO: scale both double arrays by 0.6 - 0.8 to get rid of crackling/clipping
     
     //convolve the signals
     time_t startTime, endTime;
     time(&startTime);
     
-    convolve(inputFile->signal, inputFile->signalSize, hFloat, impulseFile->signalSize, outputSignal, outputSize);
+    //convolve(inputFile->signal, inputFile->signalSize, hFloat, impulseFile->signalSize, outputSignal, outputSize);
     
+    convolve2(xDouble, inputFile->signalSize, hDouble, impulseFile->signalSize, yDouble, outputSize);
+
     time(&endTime);
     double elapsed = difftime(endTime, startTime);
     printf("DONE convolution in %.2f seconds!\n\n", elapsed);
+
+    for(int i = 0; i < outputSize; i++){
+        //outputSignal[i] = (short)yFloat[i] * pow(2,(inputFile->bitsPerSample));
+        double ySample = yDouble[i] * 32767;
+
+        outputSignal[i] = (short)ySample ;
+    }
    
     //open file stream 
     FILE* outputFile = fopen(fileName, "wb");
@@ -279,6 +297,51 @@ size_t fwriteShortLSB(short data, FILE* fileStream){
 
     //use charArray to write values as characters to file
     return fwrite(charArray, sizeof(unsigned char), 2, fileStream);
+}
+
+void convolve2(double x[], int N, double h[], int M,double y[], int P){
+
+    int n, m;
+    
+    //check size of output buffer for size P = N + M - 1
+    if(P != (N + M - 1)){
+        printf("Output signal vector is the wrong size\n");
+        printf("It is %-d, but should be %-d\n", P, (N + M - 1));
+        printf("Aborting convolution\n");
+        return;        
+    }
+    
+    //printf("input size: %d, impulse size: %d, output size: %d\n", N, M, P);
+    //printf("size of x: %d", sizeof(x)/sizeof(x[0]));
+    
+    //clear output buffer
+    for(n = 0; n < P; n++){
+        y[n] = 0.0;
+    }
+    
+    
+    printf("Starting convolution loops...\n");
+    time_t startTime = time(NULL);
+    
+    //Outer loop: process each x[n]
+    for(n = 0; n < N; n++){
+        //inner loop: process each h[m] for current x[n]
+        for(m = 0; m < M; m++){
+                
+            y[n+m] += x[n] * h[m];
+            
+            //provide periodic printout for long convolution
+            time_t currentTime = time(NULL);
+            time_t elapsedTime = currentTime - startTime;
+                
+            if((m == 100000) && ((n%200)==0) && ((elapsedTime%30) == 0)){
+                printf("Convolving %d...\n", (n+m));
+            }
+    
+        } 
+    }
+    
+    
 }
 
 
