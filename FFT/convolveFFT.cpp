@@ -35,6 +35,8 @@ size_t fwriteIntLSB(int data, FILE *fileStream);
 size_t fwriteShortLSB(short data, FILE* fileStream);
 void signalToDouble(WavFile* wav,double signalDouble[]);
 int isPowerOfTwo(int num);
+void four1(double data[], int nn, int isign);
+void convolveFreqs(double* freqX, double *freqH, double* freqY, int arrayLength);
 
 int main(int argc, char* argv[]){
 
@@ -96,8 +98,14 @@ int main(int argc, char* argv[]){
             //TODO: normalize/scale result
             //TODO: write to file
             
-            /* 1.turn Time Domain signals x[n], h[n] into Freq Domain arrays X[k], H[k] */
-             
+            /* 1.Time Domain to Freq Domain Transformation (FFT)*/
+
+            //Turn time domain signals x[n], h[n] into freq domain X[k], H[k]
+            //zero-pad arrays so that:
+            //x[n] and h[n] have same length
+            //length is a power of 2 (need for FFT)
+            //length is long enough to avoid circular convolution
+
             //turn x[n], h[n] signals into double arrays (need for FFT)
             double x[inputFile->signalSize];
             double h[impulseFile->signalSize];
@@ -107,10 +115,6 @@ int main(int argc, char* argv[]){
 
             printf("converted signals to double\n");
 
-            //zero-pad arrays so that:
-            //x[n] and h[n] have same length
-            //length is a power of 2 (need for FFT)
-            //length is long enough to avoid circular convolution
             int sizeFreqX = inputFile->signalSize;
             int sizeFreqH = impulseFile->signalSize;
             
@@ -121,9 +125,9 @@ int main(int argc, char* argv[]){
                 maxLength = sizeFreqX;
 
             printf("Max length of signals: %d\n", maxLength);
-            //TODO: pad to equal length, check for power of 2
+            
 
-            //check if maxLength is power of 2
+            //make sure maxLength is power of 2
             int maxLengthPow2 = 0;
             int pow2 = 0; //minimum power of 2 to produce length at least as large as maxLength
             if(isPowerOfTwo(maxLength) != 1){
@@ -141,15 +145,43 @@ int main(int argc, char* argv[]){
 
             //X[k],H[k] have real & imaginary parts, so length  = maxLength * 2
             //real part is signal, imaginary part should be set to 0's
-            double* freqX = new double[maxLengthPow2 *2];
-            double* freqH = new double[maxLengthPow2 *2];
+            double* freqX = new double[maxLengthPow2*2];
+            double* freqH = new double[maxLengthPow2*2];
             
-            //TODO: initialize X[k],H[k] to all zeroes for imaginary part
-
+            //zero pad X[k],H[k] to all zeroes for imaginary part
+            for(int i = 0; i < maxLengthPow2*2; i++){
+               freqX[i] = 0.0;
+               freqH[i] = 0.0; 
+            }
             //TODO: rewrite every other index with respective signal for real part
+            for(int i = 0; i < sizeFreqX; i++){
+                freqX[i*2] = x[i];
+            }
+
+            for(int i = 0; i < sizeFreqH; i++){
+                freqH[i*2] = h[i];
+            }
+
+            //complete freq domain transformation using four1 algorithm
+            four1(freqX, maxLengthPow2, 1);
+            four1(freqH, maxLengthPow2, 1);
 
 
+            /*2. Frequency Domain Convolution */
 
+            //Create Y[k] by multiplying X[k] and H[k] point by point
+            //complex multiplication:
+            //realY[k] = realX[k]*realH[k] - imX[k]*imH[k]
+            //imY[k] = imX[k]*realH[k] + realX[k]*imH[k]
+
+            double* freqY = new double[maxLengthPow2*2];
+
+
+            /*3. Freq Domain to Time Domain Transformation (IFFT)*/
+            //use inverse four1 to turn Y[k] to y[n]
+            //scale output of IFFT (real/imaginary parts)
+
+            //write to file
         }
     }
 }
@@ -281,4 +313,73 @@ int isPowerOfTwo(int num){
     }
 
     return 1;
+}
+
+
+//  The four1 FFT from Numerical Recipes in C,
+//  p. 507 - 508.
+//  Note:  changed float data types to double.
+//  nn must be a power of 2, and use +1 for
+//  isign for an FFT, and -1 for the Inverse FFT.
+//  The data is complex, so the array size must be
+//  nn*2. This code assumes the array starts
+//  at index 1, not 0, so subtract 1 when
+//  calling the routine (see main() below).
+void four1(double data[], int nn, int isign){
+
+    unsigned long n, mmax, m, j, istep, i;
+    double wtemp, wr, wpr, wpi, wi, theta;
+    double tempr, tempi;
+
+    n = nn << 1;
+    j = 1;
+
+    for (i = 1; i < n; i += 2) {
+	if (j > i) {
+	    SWAP(data[j], data[i]);
+	    SWAP(data[j+1], data[i+1]);
+	}
+	m = nn;
+	while (m >= 2 && j > m) {
+	    j -= m;
+	    m >>= 1;
+	}
+	j += m;
+    }
+
+    mmax = 2;
+    while (n > mmax) {
+	istep = mmax << 1;
+	theta = isign * (6.28318530717959 / mmax);
+	wtemp = sin(0.5 * theta);
+	wpr = -2.0 * wtemp * wtemp;
+	wpi = sin(theta);
+	wr = 1.0;
+	wi = 0.0;
+	for (m = 1; m < mmax; m += 2) {
+	    for (i = m; i <= n; i += istep) {
+		j = i + mmax;
+		tempr = wr * data[j] - wi * data[j+1];
+		tempi = wr * data[j+1] + wi * data[j];
+		data[j] = data[i] - tempr;
+		data[j+1] = data[i+1] - tempi;
+		data[i] += tempr;
+		data[i+1] += tempi;
+	    }
+	    wr = (wtemp = wr) * wpr - wi * wpi + wr;
+	    wi = wi * wpr + wtemp * wpi + wi;
+	}
+	mmax = istep;
+    }
+}
+
+
+void convolveFreqs(double* freqX, double *freqH, double* freqY, int arrayLength){
+    //complex multiplication:
+    //realY[k] = realX[k]*realH[k] - imX[k]*imH[k]
+    //imY[k] = imX[k]*realH[k] + realX[k]*imH[k]
+    for(int i = 0; i < arrayLength; i++){
+        
+    }
+    
 }
