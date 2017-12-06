@@ -38,6 +38,9 @@ void signalToDouble(WavFile* wav,double signalDouble[]);
 int isPowerOfTwo(int num);
 void four1(double data[], int nn, int isign);
 void convolveFreqs(double* freqX, double *freqH, double* freqY, int arrayLength);
+void scaleOutputFreq(double* freq, int numSamples);
+void createOutputWAV(char* fileName, double *freqY, int numSamples, WavFile* inputFile);
+
 
 int main(int argc, char* argv[]){
 
@@ -192,9 +195,13 @@ int main(int argc, char* argv[]){
             /*3. Freq Domain to Time Domain Transformation (IFFT)*/
             //use inverse four1 to turn Y[k] to y[n]
             four1(freqY, maxLengthPow2, -1);
+            
             //scale output of IFFT (real/imaginary parts)
+            //scaleOutputFreq(freqY, maxLengthPow2);
+            //printf("Scaling output by %d complete!\n", maxLengthPow2);
 
             //write to file
+            createOutputWAV(outputFileName, freqY, maxLengthPow2, inputFile);
         }
     }
 }
@@ -309,6 +316,8 @@ void signalToDouble(WavFile* wav,double signalDouble[]){
     
     for(int i = 0; i < (wav->signalSize); i++){
         signalDouble[i] = ((double) wav->signal[i])/32678.0;
+        //scale?
+        signalDouble[i] = 0.5 * signalDouble[i];
     }
 }
 
@@ -401,4 +410,33 @@ void convolveFreqs(double* freqX, double *freqH, double* freqY, int arrayLength)
         if((i%100000) == 0)
             printf("Convolving %d...\n", i);
     }
+}
+
+void scaleOutputFreq(double* freq, int numSamples){
+    for(int i = 0; i < numSamples; i+=2){
+        //index i = real, index i+1 = imaginary
+        freq[i] /= (double) numSamples;
+        freq[i+1] /= (double) numSamples;
+    }
+
+}
+
+void createOutputWAV(char* fileName, double *freqY, int numSamples, WavFile* inputFile){
+    //open file stream
+    FILE* outputFile = fopen(fileName, "wb");
+
+    printf("Writing WAV Header for %s...\n", fileName);
+    writeWAVHeader(inputFile->numChannels, numSamples, inputFile->bitsPerSample, inputFile->sampleRate, outputFile);
+
+    //write convolved output signal into output WAV file
+    //use LSB method since signal needs to be short
+    printf("Writing convolved signal to %s\n", fileName);
+    for(int i = 0; i < numSamples; i++){
+        fwriteShortLSB((short) freqY[i], outputFile);
+    }
+
+
+    //close file stream
+    printf("Done writing %s!\n", fileName);
+    fclose(outputFile);
 }
