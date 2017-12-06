@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <time.h>
 #include <fstream>
 #include <iostream>
 #include "WavFile.h"
@@ -107,8 +108,10 @@ int main(int argc, char* argv[]){
             //length is long enough to avoid circular convolution
 
             //turn x[n], h[n] signals into double arrays (need for FFT)
-            double x[inputFile->signalSize];
-            double h[impulseFile->signalSize];
+            printf("WUT\n");
+            
+            double* x = new double[inputFile->signalSize];
+            double* h = new double[impulseFile->signalSize];
 
             signalToDouble(inputFile, x);
             signalToDouble(impulseFile, h);
@@ -153,7 +156,8 @@ int main(int argc, char* argv[]){
                freqX[i] = 0.0;
                freqH[i] = 0.0; 
             }
-            //TODO: rewrite every other index with respective signal for real part
+            //rewrite every other index with respective signal for real part
+            //index i = real, index i+1 = imaginary
             for(int i = 0; i < sizeFreqX; i++){
                 freqX[i*2] = x[i];
             }
@@ -163,9 +167,12 @@ int main(int argc, char* argv[]){
             }
 
             //complete freq domain transformation using four1 algorithm
+            printf("Performing FFT for %s signal...\n", inputFileName);
             four1(freqX, maxLengthPow2, 1);
+            printf("Performing FFT for %s signal...\n", impulseFileName);
             four1(freqH, maxLengthPow2, 1);
 
+            printf("FFT for input and impulse signals complete!\n");
 
             /*2. Frequency Domain Convolution */
 
@@ -174,11 +181,17 @@ int main(int argc, char* argv[]){
             //realY[k] = realX[k]*realH[k] - imX[k]*imH[k]
             //imY[k] = imX[k]*realH[k] + realX[k]*imH[k]
 
+            clock_t startTime;
+
             double* freqY = new double[maxLengthPow2*2];
+            startTime = clock();
+            convolveFreqs(freqX, freqH, freqY, maxLengthPow2);
 
-
+            double elapsed = clock() - startTime;
+            printf("DONE FFT convolution in %.3f seconds!\n\n", elapsed/CLOCKS_PER_SEC);
             /*3. Freq Domain to Time Domain Transformation (IFFT)*/
             //use inverse four1 to turn Y[k] to y[n]
+            four1(freqY, maxLengthPow2, -1);
             //scale output of IFFT (real/imaginary parts)
 
             //write to file
@@ -293,7 +306,8 @@ size_t fwriteShortLSB(short data, FILE* fileStream){
 
 
 void signalToDouble(WavFile* wav,double signalDouble[]){
-    for(int i = 0; i < wav->signalSize; i++){
+    
+    for(int i = 0; i < (wav->signalSize); i++){
         signalDouble[i] = ((double) wav->signal[i])/32678.0;
     }
 }
@@ -375,11 +389,16 @@ void four1(double data[], int nn, int isign){
 
 
 void convolveFreqs(double* freqX, double *freqH, double* freqY, int arrayLength){
+    printf("Starting convolution loops...\n");
     //complex multiplication:
     //realY[k] = realX[k]*realH[k] - imX[k]*imH[k]
     //imY[k] = imX[k]*realH[k] + realX[k]*imH[k]
     for(int i = 0; i < arrayLength; i++){
-        
-    }
+        //index i = real, index i+1 = imaginary
+        freqY[i*2] = (freqX[i] * freqH[i]) - (freqX[i+1] * freqH[i+1]); //real
+        freqY[(i*2) + 1] = (freqX[i+1] * freqH[i]) + (freqX[i] * freqH[i+1]); //imaginary
     
+        if((i%100000) == 0)
+            printf("Convolving %d...\n", i);
+    }
 }
