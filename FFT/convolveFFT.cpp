@@ -39,7 +39,7 @@ int isPowerOfTwo(int num);
 void four1(double data[], int nn, int isign);
 void convolveFreqs(double* freqX, double *freqH, double* freqY, int arrayLength);
 void scaleOutputFreq(double* outFreq, WavFile* inputFile, int numSamples);
-void createOutputWAV(char* fileName, double *freqY, int numSamples, WavFile* inputFile);
+void createOutputWAV(char* fileName, double *freqY, int numSamples, int shortMaxLength, WavFile* inputFile);
 
 
 int main(int argc, char* argv[]){
@@ -93,14 +93,6 @@ int main(int argc, char* argv[]){
             2. multiply X[k] and H[k] point by point (complex multiplication)
             3. convert result Y[k] back to time domain with IFFT
              */
-
-            //gonna use four1 algorithm for FFT/IFFT
-
-            //TODO: Time to Freq Domain transformation (four1 FFT)
-            //TODO: Freq Domain convolution (complex multiplication)
-            //TODO: inverse FFT (four1)
-            //TODO: normalize/scale result
-            //TODO: write to file
             
             /* 1.Time Domain to Freq Domain Transformation (FFT)*/
 
@@ -110,9 +102,7 @@ int main(int argc, char* argv[]){
             //length is a power of 2 (need for FFT)
             //length is long enough to avoid circular convolution
 
-            //turn x[n], h[n] signals into double arrays (need for FFT)
-            printf("WUT\n");
-            
+            //turn x[n], h[n] signals into double arrays (need for FFT)           
             double* x = new double[inputFile->signalSize];
             double* h = new double[impulseFile->signalSize];
 
@@ -131,7 +121,17 @@ int main(int argc, char* argv[]){
                 maxLength = sizeFreqX;
 
             printf("Max length of signals: %d\n", maxLength);
-            
+
+
+            int pow2 = 1;
+            while(pow2 < maxLength){
+                pow2 *= 2;
+            }
+
+            int maxLengthPow2 = pow2*2;
+            printf("pow2: %d, maxLengthPow2: %d\n", pow2, maxLengthPow2);
+
+            /*
 
             //make sure maxLength is power of 2
             int maxLengthPow2 = 0;
@@ -141,6 +141,7 @@ int main(int argc, char* argv[]){
                 //log2 truncated when cast from double to int, so add 1 for next closest power
                 pow2 = (int) log2(maxLength) + 1;
                 maxLengthPow2 = (int) pow(2,pow2);
+                //maxLengthPow2 *= 2;
                 printf("minimum power: 2^(%d) = %d\n", pow2, maxLengthPow2);
             }
             else{
@@ -148,14 +149,20 @@ int main(int argc, char* argv[]){
                 pow2 = (int) log2(maxLength);                
                 maxLengthPow2 = maxLength;
             }
+            */
+
+            
 
             //X[k],H[k] have real & imaginary parts, so length  = maxLength * 2
             //real part is signal, imaginary part should be set to 0's
-            double* freqX = new double[maxLengthPow2*2];
-            double* freqH = new double[maxLengthPow2*2];
+            //double* freqX = new double[maxLengthPow2*2];
+            //double* freqH = new double[maxLengthPow2*2];
+            double* freqX = new double[maxLengthPow2];
+            double* freqH = new double[maxLengthPow2];
             
             //zero pad X[k],H[k] to all zeroes for imaginary part
-            for(int i = 0; i < maxLengthPow2*2; i++){
+            //for(int i = 0; i < maxLengthPow2*2; i++){
+            for(int i  = 0; i < maxLengthPow2; i++){
                freqX[i] = 0.0;
                freqH[i] = 0.0; 
             }
@@ -171,9 +178,11 @@ int main(int argc, char* argv[]){
 
             //complete freq domain transformation using four1 algorithm
             printf("Performing FFT for %s signal...\n", inputFileName);
-            four1(freqX-1, maxLengthPow2, 1);
+            //four1(freqX-1, maxLengthPow2, 1);
+            four1(freqX-1, pow2, 1);
             printf("Performing FFT for %s signal...\n", impulseFileName);
-            four1(freqH-1, maxLengthPow2, 1);
+            //four1(freqH-1, maxLengthPow2, 1);
+            four1(freqH-1, pow2, 1);
 
             printf("FFT for input and impulse signals complete!\n");
 
@@ -186,21 +195,48 @@ int main(int argc, char* argv[]){
 
             clock_t startTime;
 
-            double* freqY = new double[maxLengthPow2*2];
+            //double* freqY = new double[maxLengthPow2*2];
+            double* freqY = new double[maxLengthPow2];
             startTime = clock();
+            //convolveFreqs(freqX, freqH, freqY, maxLengthPow2);
             convolveFreqs(freqX, freqH, freqY, maxLengthPow2);
-
             double elapsed = clock() - startTime;
             printf("DONE FFT convolution in %.3f seconds!\n\n", elapsed/CLOCKS_PER_SEC);
             /*3. Freq Domain to Time Domain Transformation (IFFT)*/
             //use inverse four1 to turn Y[k] to y[n]
-            four1(freqY-1, maxLengthPow2, -1);
-            
+            //four1(freqY-1, maxLengthPow2, -1);
+            four1(freqY-1, pow2, -1);
+            printf("IFFT on output frequency complete!\n");
+
             //scale output of IFFT (real/imaginary parts)
-            scaleOutputFreq(freqY, inputFile, maxLengthPow2);
+            //scaleOutputFreq(freqY, inputFile, maxLengthPow2);
+            
+
+            int P = (inputFile->signalSize) + (impulseFile->signalSize) - 1;
+            int outputSize = (inputFile->signalSize) + (impulseFile->signalSize) - 1;
+            
+            //separate convolved signal (i.e. real indices) from freqY
+            double outputMaxValue = 0.0;
+            double* freqYSignal = new double[outputSize];
+            for(int i = 0; i < outputSize; i++){
+                double signalSample = freqY[i*2];
+                freqYSignal[i] = signalSample;
+
+                if(outputMaxValue < abs(signalSample)){
+                    outputMaxValue = abs(signalSample);
+                }
+            }
+
+            //scale?
+            scaleOutputFreq(freqYSignal, inputFile, outputSize);
+            //for(int i = 0; i < outputSize; i++){
+            //    freqYSignal[i] /= outputMaxValue;
+            //}
+
             
             //write to file
-            createOutputWAV(outputFileName, freqY, maxLengthPow2, inputFile);
+            createOutputWAV(outputFileName, freqYSignal, outputSize, P, inputFile);
+            //createOutputWAV(outputFileName, freqY, maxLengthPow2, P,inputFile);
         }
     }
 }
@@ -399,10 +435,10 @@ void convolveFreqs(double* freqX, double *freqH, double* freqY, int arrayLength)
     //complex multiplication:
     //realY[k] = realX[k]*realH[k] - imX[k]*imH[k]
     //imY[k] = imX[k]*realH[k] + realX[k]*imH[k]
-    for(int i = 0; i < arrayLength; i++){
+    for(int i = 0; i < arrayLength; i+= 2){
         //index i = real, index i+1 = imaginary
-        freqY[i*2] = (freqX[i] * freqH[i]) - (freqX[i+1] * freqH[i+1]); //real
-        freqY[(i*2) + 1] = (freqX[i+1] * freqH[i]) + (freqX[i] * freqH[i+1]); //imaginary
+        freqY[i] = freqX[i] * freqH[i] - freqX[i+1] * freqH[i+1]; //real
+        freqY[i+1] = freqX[i+1] * freqH[i] + freqX[i] * freqH[i+1]; //imaginary
     
         if((i%100000) == 0)
             printf("Convolving %d...\n", i);
@@ -430,7 +466,7 @@ void scaleOutputFreq(double* outFreq, WavFile* inputFile, int numSamples){
 
 }
 
-void createOutputWAV(char* fileName, double *freqY, int numSamples, WavFile* inputFile){
+void createOutputWAV(char* fileName, double *freqY, int numSamples, int shortMaxLength, WavFile* inputFile){
     //open file stream
     FILE* outputFile = fopen(fileName, "wb");
 
@@ -439,10 +475,15 @@ void createOutputWAV(char* fileName, double *freqY, int numSamples, WavFile* inp
 
     //write convolved output signal into output WAV file
     //use LSB method since signal needs to be short
+    
+
     printf("Writing convolved signal to %s\n", fileName);
+
+    
     for(int i = 0; i < numSamples; i++){
         fwriteShortLSB((short) freqY[i], outputFile);
     }
+    
 
     //close file stream
     printf("Done writing %s!\n", fileName);
