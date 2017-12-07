@@ -38,7 +38,7 @@ void signalToDouble(WavFile* wav,double signalDouble[]);
 int isPowerOfTwo(int num);
 void four1(double data[], int nn, int isign);
 void convolveFreqs(double* freqX, double *freqH, double* freqY, int arrayLength);
-void scaleOutputFreq(double* freq, int numSamples);
+void scaleOutputFreq(double* outFreq, WavFile* inputFile, int numSamples);
 void createOutputWAV(char* fileName, double *freqY, int numSamples, WavFile* inputFile);
 
 
@@ -171,9 +171,9 @@ int main(int argc, char* argv[]){
 
             //complete freq domain transformation using four1 algorithm
             printf("Performing FFT for %s signal...\n", inputFileName);
-            four1(freqX, maxLengthPow2, 1);
+            four1(freqX-1, maxLengthPow2, 1);
             printf("Performing FFT for %s signal...\n", impulseFileName);
-            four1(freqH, maxLengthPow2, 1);
+            four1(freqH-1, maxLengthPow2, 1);
 
             printf("FFT for input and impulse signals complete!\n");
 
@@ -194,12 +194,11 @@ int main(int argc, char* argv[]){
             printf("DONE FFT convolution in %.3f seconds!\n\n", elapsed/CLOCKS_PER_SEC);
             /*3. Freq Domain to Time Domain Transformation (IFFT)*/
             //use inverse four1 to turn Y[k] to y[n]
-            four1(freqY, maxLengthPow2, -1);
+            four1(freqY-1, maxLengthPow2, -1);
             
             //scale output of IFFT (real/imaginary parts)
-            //scaleOutputFreq(freqY, maxLengthPow2);
-            //printf("Scaling output by %d complete!\n", maxLengthPow2);
-
+            scaleOutputFreq(freqY, inputFile, maxLengthPow2);
+            
             //write to file
             createOutputWAV(outputFileName, freqY, maxLengthPow2, inputFile);
         }
@@ -312,12 +311,10 @@ size_t fwriteShortLSB(short data, FILE* fileStream){
 }
 
 
-void signalToDouble(WavFile* wav,double signalDouble[]){
-    
+void signalToDouble(WavFile* wav,double signalDouble[]){   
     for(int i = 0; i < (wav->signalSize); i++){
         signalDouble[i] = ((double) wav->signal[i])/32678.0;
-        //scale?
-        signalDouble[i] = 0.5 * signalDouble[i];
+
     }
 }
 
@@ -412,11 +409,23 @@ void convolveFreqs(double* freqX, double *freqH, double* freqY, int arrayLength)
     }
 }
 
-void scaleOutputFreq(double* freq, int numSamples){
-    for(int i = 0; i < numSamples; i+=2){
-        //index i = real, index i+1 = imaginary
-        freq[i] /= (double) numSamples;
-        freq[i+1] /= (double) numSamples;
+void scaleOutputFreq(double* outFreq, WavFile* inputFile, int numSamples){
+    double inputMaxValue = 0.0;
+    double outputMaxValue = 0.0;
+
+    //check for max value in both original and output signals
+    for(int i = 0; i < numSamples; i++){
+        if(inputFile->signal[i] > inputMaxValue)
+            inputMaxValue = inputFile->signal[i];
+
+        if(outFreq[i] > outputMaxValue)
+            outputMaxValue = outFreq[i];
+    }
+
+    //scale output frquency (divide by outputMax, multiply by inputMax)
+    //should hold that outputMax > inputMax, so will scale down to be audible
+    for(int i  = 0; i < numSamples; i++){
+        outFreq[i] = outFreq[i] / outputMaxValue * inputMaxValue;
     }
 
 }
@@ -434,7 +443,6 @@ void createOutputWAV(char* fileName, double *freqY, int numSamples, WavFile* inp
     for(int i = 0; i < numSamples; i++){
         fwriteShortLSB((short) freqY[i], outputFile);
     }
-
 
     //close file stream
     printf("Done writing %s!\n", fileName);
