@@ -29,12 +29,13 @@ using namespace std;
 /*Function declarations */
 int checkExtension(char* fileName);
 int setExtensionFlag(int* fileExtensions);
-void convolve(short x[], int N, float h[], int M, short y[], int P);
-void convolve2(double x[], int N, double h[], int M, double y[], int P);
+void convolve(double x[], int N, double h[], int M, double y[], int P);
 void createOutputWAV(char* fileName);
 void writeWAVHeader(int numChannels, int numSamples, int bitsPerSample, int sampleRate, FILE *outputFile);
 size_t fwriteIntLSB(int data, FILE *fileStream);
 size_t fwriteShortLSB(short data, FILE* fileStream);
+void signalToDouble(WavFile* wav,double signalDouble[]);
+void scaleOutputSignal(double* outputSignal, WavFile* inputFile, int outputSize);
 
 /*Instance variables */
 WavFile *inputFile;
@@ -89,50 +90,6 @@ int main(int argc, char* argv[]){
 }
 
 
-void convolve(short x[], int N, float h[], int M, short y[], int P){
-    int n, m;
-
-    //check size of output buffer for size P = N + M - 1
-    if(P != (N + M - 1)){
-        printf("Output signal vector is the wrong size\n");
-        printf("It is %-d, but should be %-d\n", P, (N + M - 1));
-        printf("Aborting convolution\n");
-        return;        
-    }
-
-    //printf("input size: %d, impulse size: %d, output size: %d\n", N, M, P);
-    //printf("size of x: %d", sizeof(x)/sizeof(x[0]));
-
-    //clear output buffer
-    for(n = 0; n < P; n++){
-        y[n] = 0.0;
-    }
-
-
-    printf("Starting convolution loops...\n");
-    time_t startTime = time(NULL);
-
-    //Outer loop: process each x[n]
-    for(n = 0; n < N; n++){
-        //inner loop: process each h[m] for current x[n]
-        for(m = 0; m < M; m++){
-            
-            y[n+m] += (short) (x[n] * h[m]);
-        
-            //provide periodic printout for long convolution
-            time_t currentTime = time(NULL);
-            time_t elapsedTime = currentTime - startTime;
-            
-            if((m == 100000) && ((n%200)==0) && ((elapsedTime%30) == 0)){
-                printf("Convolving %d...\n", (n+m));
-            }
-
-        } 
-    }
-
-
-}
-
 int checkExtension(char* fileName){
     
     printf("Checking file extension for %s...", fileName);
@@ -171,41 +128,31 @@ void createOutputWAV(char* fileName){
     short* outputSignal = new short[outputSize];
     double* yDouble = new double[outputSize];
    
-    //normalize impulse before convolving
-    double* hDouble = new double[impulseFile->signalSize];
-    for(int i = 0; i < impulseFile->signalSize; i++){
-        //hFloat[i] = (float)impulseFile->signal[i] / pow(2,((impulseFile->bitsPerSample)- 1)); 
-        hDouble[i] = ((double) impulseFile->signal[i]) / 32768.0;
-        //hFloat[i] = (float) impulseFile->signal[i] / pow(2,(impulseFile->bitsPerSample));
-        hDouble[i] = 0.5 * hDouble[i];
-    }
-
-    //TODO: turn input signal into double
+    //convert input and impulse signals to double before convolving
     double* xDouble = new double[inputFile->signalSize];
-    for(int i = 0; i < inputFile->signalSize; i++){
-        //xFloat[i] = (float) inputFile->signal[i] / pow(2,(inputFile->bitsPerSample));
-        xDouble[i] = (double) inputFile->signal[i] / 32768.0;
-        xDouble[i] = 0.5 * xDouble[i];
-    }
-    //TODO: scale both double arrays by 0.6 - 0.8 to get rid of crackling/clipping
-    
+    signalToDouble(inputFile, xDouble);
+
+    double* hDouble = new double[impulseFile->signalSize];
+    signalToDouble(impulseFile, hDouble);
+
     //convolve the signals
     time_t startTime, endTime;
     time(&startTime);
     
-    //convolve(inputFile->signal, inputFile->signalSize, hFloat, impulseFile->signalSize, outputSignal, outputSize);
-    
-    convolve2(xDouble, inputFile->signalSize, hDouble, impulseFile->signalSize, yDouble, outputSize);
+    convolve(xDouble, inputFile->signalSize, hDouble, impulseFile->signalSize, yDouble, outputSize);
 
     time(&endTime);
     double elapsed = difftime(endTime, startTime);
     printf("DONE convolution in %.2f seconds!\n\n", elapsed);
 
-    for(int i = 0; i < outputSize; i++){
-        //outputSignal[i] = (short)yFloat[i] * pow(2,(inputFile->bitsPerSample));
-        double ySample = yDouble[i] * 32767;
 
-        outputSignal[i] = (short)ySample ;
+    scaleOutputSignal(yDouble, inputFile, outputSize);
+
+    for(int i = 0; i < outputSize; i++){
+        
+        //double ySample = yDouble[i] * 32767;
+        //outputSignal[i] = (short)ySample ;
+        outputSignal[i] = (short) yDouble[i];
     }
    
     //open file stream 
@@ -299,7 +246,7 @@ size_t fwriteShortLSB(short data, FILE* fileStream){
     return fwrite(charArray, sizeof(unsigned char), 2, fileStream);
 }
 
-void convolve2(double x[], int N, double h[], int M,double y[], int P){
+void convolve(double x[], int N, double h[], int M,double y[], int P){
 
     int n, m;
     
@@ -310,16 +257,12 @@ void convolve2(double x[], int N, double h[], int M,double y[], int P){
         printf("Aborting convolution\n");
         return;        
     }
-    
-    //printf("input size: %d, impulse size: %d, output size: %d\n", N, M, P);
-    //printf("size of x: %d", sizeof(x)/sizeof(x[0]));
-    
+  
     //clear output buffer
     for(n = 0; n < P; n++){
         y[n] = 0.0;
     }
-    
-    
+       
     printf("Starting convolution loops...\n");
     time_t startTime = time(NULL);
     
@@ -344,5 +287,30 @@ void convolve2(double x[], int N, double h[], int M,double y[], int P){
     
 }
 
+void signalToDouble(WavFile* wav,double signalDouble[]){
+    for(int i  = 0; i < (wav->signalSize); i++){
+        signalDouble[i] = ((double) wav->signal[i])/32678.0;
+        //signalDouble[i] = 0.5 * signalDouble[i];
+    }
+}
+
+void scaleOutputSignal(double* outputSignal, WavFile* inputFile, int outputSize){
+    double inputMaxValue = 0.0;
+    double outputMaxValue = 0.0;
+
+    //check for max value in both original and output signals
+    for(int i = 0; i < outputSize; i++){
+        if(inputFile->signal[i] > inputMaxValue)
+            inputMaxValue = inputFile->signal[i];
+
+        if(outputSignal[i] > outputMaxValue)
+            outputMaxValue = outputSignal[i];
+    }
+    
+    for(int i  = 0; i < outputSize; i++){
+        outputSignal[i] = outputSignal[i] / outputMaxValue * inputMaxValue;
+    }
+
+}
 
 
