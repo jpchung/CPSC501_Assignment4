@@ -8,8 +8,13 @@
  * Created by Johnny Chung - based on demo code from Leonard Manzara
  */
 
-//compile all files: g++ *.cpp -o convolveFFT
-//run: ./convolveFFT <inputfile.wav> <IRfile.wav> <outputfile.wav>
+/*
+compile all files: g++ *.cpp -o convolveFFT
+run: ./convolveFFT <inputfile.wav> <IRfile.wav> <outputfile.wav>
+profiler: g++ -p *.cpp -o convolveFFT
+          ./convolveFFT <inputfile.wav> <IRfile.wav> <outputfile.wav>
+          gprof convolveFFT
+*/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,11 +40,10 @@ void writeWAVHeader(int numChannels, int numSamples, int bitsPerSample, int samp
 size_t fwriteIntLSB(int data, FILE *fileStream);
 size_t fwriteShortLSB(short data, FILE* fileStream);
 void signalToDouble(WavFile* wav,double signalDouble[]);
-int isPowerOfTwo(int num);
 void four1(double data[], int nn, int isign);
 void convolveFreqs(double* freqX, double *freqH, double* freqY, int arrayLength);
 void scaleOutputFreq(double* outFreq, WavFile* inputFile, int numSamples);
-void createOutputWAV(char* fileName, double *freqY, int numSamples, int shortMaxLength, WavFile* inputFile);
+void createOutputWAV(char* fileName, double* outputSignal, int numSamples, WavFile* inputFile);
 
 
 int main(int argc, char* argv[]){
@@ -123,40 +127,17 @@ int main(int argc, char* argv[]){
             printf("Max length of signals: %d\n", maxLength);
 
 
+            //find next largest power of 2 that's at least as large as maxLength
             int pow2 = 1;
             while(pow2 < maxLength){
                 pow2 *= 2;
             }
 
+            //double that power of 2 for length of freq arrays X[k],H[k]
+            //i.e. make sure freq arrays long enough for real and imaginary parts
             int maxLengthPow2 = pow2*2;
             printf("pow2: %d, maxLengthPow2: %d\n", pow2, maxLengthPow2);
 
-            /*
-
-            //make sure maxLength is power of 2
-            int maxLengthPow2 = 0;
-            int pow2 = 0; //minimum power of 2 to produce length at least as large as maxLength
-            if(isPowerOfTwo(maxLength) != 1){
-                printf("%d NOT a power of 2\n", maxLength);
-                //log2 truncated when cast from double to int, so add 1 for next closest power
-                pow2 = (int) log2(maxLength) + 1;
-                maxLengthPow2 = (int) pow(2,pow2);
-                //maxLengthPow2 *= 2;
-                printf("minimum power: 2^(%d) = %d\n", pow2, maxLengthPow2);
-            }
-            else{
-                printf("%d is power of 2\n", maxLength);
-                pow2 = (int) log2(maxLength);                
-                maxLengthPow2 = maxLength;
-            }
-            */
-
-            
-
-            //X[k],H[k] have real & imaginary parts, so length  = maxLength * 2
-            //real part is signal, imaginary part should be set to 0's
-            //double* freqX = new double[maxLengthPow2*2];
-            //double* freqH = new double[maxLengthPow2*2];
             double* freqX = new double[maxLengthPow2];
             double* freqH = new double[maxLengthPow2];
             
@@ -178,45 +159,39 @@ int main(int argc, char* argv[]){
 
             //complete freq domain transformation using four1 algorithm
             printf("Performing FFT for %s signal...\n", inputFileName);
-            //four1(freqX-1, maxLengthPow2, 1);
             four1(freqX-1, pow2, 1);
+
             printf("Performing FFT for %s signal...\n", impulseFileName);
-            //four1(freqH-1, maxLengthPow2, 1);
             four1(freqH-1, pow2, 1);
 
             printf("FFT for input and impulse signals complete!\n");
 
             /*2. Frequency Domain Convolution */
 
-            //Create Y[k] by multiplying X[k] and H[k] point by point
-            //complex multiplication:
-            //realY[k] = realX[k]*realH[k] - imX[k]*imH[k]
-            //imY[k] = imX[k]*realH[k] + realX[k]*imH[k]
+            //Create Y[k] by multiplying X[k] and H[k] point by point (complex multiplication)
 
             clock_t startTime;
-
-            //double* freqY = new double[maxLengthPow2*2];
             double* freqY = new double[maxLengthPow2];
             startTime = clock();
-            //convolveFreqs(freqX, freqH, freqY, maxLengthPow2);
+
             convolveFreqs(freqX, freqH, freqY, maxLengthPow2);
+            
             double elapsed = clock() - startTime;
             printf("DONE FFT convolution in %.3f seconds!\n\n", elapsed/CLOCKS_PER_SEC);
+            
             /*3. Freq Domain to Time Domain Transformation (IFFT)*/
+            
             //use inverse four1 to turn Y[k] to y[n]
-            //four1(freqY-1, maxLengthPow2, -1);
+            printf("Performing IFFT on output frequency...\n");
             four1(freqY-1, pow2, -1);
             printf("IFFT on output frequency complete!\n");
-
-            //scale output of IFFT (real/imaginary parts)
-            //scaleOutputFreq(freqY, inputFile, maxLengthPow2);
             
 
-            int P = (inputFile->signalSize) + (impulseFile->signalSize) - 1;
-            int outputSize = (inputFile->signalSize) + (impulseFile->signalSize) - 1;
             
             //separate convolved signal (i.e. real indices) from freqY
+            int outputSize = (inputFile->signalSize) + (impulseFile->signalSize) - 1;   
             double outputMaxValue = 0.0;
+
             double* freqYSignal = new double[outputSize];
             for(int i = 0; i < outputSize; i++){
                 double signalSample = freqY[i*2];
@@ -227,22 +202,23 @@ int main(int argc, char* argv[]){
                 }
             }
 
-            //scale?
+            //scale convolved output signal
             scaleOutputFreq(freqYSignal, inputFile, outputSize);
-            //for(int i = 0; i < outputSize; i++){
-            //    freqYSignal[i] /= outputMaxValue;
-            //}
-
             
             //write to file
-            createOutputWAV(outputFileName, freqYSignal, outputSize, P, inputFile);
-            //createOutputWAV(outputFileName, freqY, maxLengthPow2, P,inputFile);
+            createOutputWAV(outputFileName, freqYSignal, outputSize, inputFile);
+            
         }
     }
 }
 
 
-//check if filename has .wav extension
+/** 
+ * Function: checkExtension
+ * Description: check file name contains the .wav extension
+ * Parameters:
+ *          char* fileName - file name from command-line arg
+ */
 int checkExtension(char* fileName){
     
     printf("Checking file extension for %s...", fileName);
@@ -265,7 +241,12 @@ int checkExtension(char* fileName){
        
 }
 
-//set flag for valid file extensions
+/**
+ * Function: setExtensionFlag
+ * Description: set flag in main for valid file extensions for command-line args
+ * Parameters:
+ *          int* fileExtensions - pointer to list of file extension flags
+ */
 int setExtensionFlag(int* fileExtensions){
     int flag = 0;  
     for(int i = 0; i < sizeof(fileExtensions); i++){
@@ -277,7 +258,16 @@ int setExtensionFlag(int* fileExtensions){
 }
 
 
-
+/** 
+ * Function: writeWAVHeader
+ * Description: writes the header for WAV file format to output file
+ * Parameters:
+ *          int numChannels - number of audio channels
+ *          int numSamples - number of sound data samples
+ *          int bitsPerSample - number of bits per sound data sample
+ *          int sampleRate - sampling frequency
+ *          FILE* outputFile - file stream for output     
+ */
 void writeWAVHeader(int numChannels, int numSamples, int bitsPerSample, int sampleRate, FILE *outputFile){
 
     //calculations for header fields
@@ -317,6 +307,16 @@ void writeWAVHeader(int numChannels, int numSamples, int bitsPerSample, int samp
 }
 
 
+/** 
+ * Function: fwriteIntLSB
+ * Description: Writes a 4-byte integer to the file stream, starting
+ *              with the least significant byte (i.e. writes the int
+ *              in little-endian form).  This routine will work on both
+ *              big-endian and little-endian architecture
+ * Parameters:
+ *          int data - int to write to file stream
+ *          FILE* fileStream - file stream
+ */
 size_t fwriteIntLSB(int data, FILE *fileStream){
 
     unsigned char charArray[4];
@@ -333,6 +333,16 @@ size_t fwriteIntLSB(int data, FILE *fileStream){
 }
 
 
+/** 
+ * Function: fwriteShortLSB
+ * Description: Writes a 2-byte integer to the file stream, starting
+ *              with the least significant byte (i.e. writes the int
+ *              in little-endian form).  This routine will work on both
+ *              big-endian and little-endian architectures.
+ * Parameters:
+ *          short data - short to write to file stream
+ *          FILE* fileStream - file stream
+ */
 size_t fwriteShortLSB(short data, FILE* fileStream){
 
     unsigned char charArray[2];
@@ -347,28 +357,18 @@ size_t fwriteShortLSB(short data, FILE* fileStream){
 }
 
 
+/** 
+ * Function: signalToDouble
+ * Description: Convert wav file sound data from short to double array
+ * Parameters:
+ *          WavFile* wav - object instance of WAV file
+ *          double signalDouble[] - output double array for wav file sound data 
+ */
 void signalToDouble(WavFile* wav,double signalDouble[]){   
     for(int i = 0; i < (wav->signalSize); i++){
         signalDouble[i] = ((double) wav->signal[i])/32678.0;
 
     }
-}
-
-
-//check if a number is a power of 2 (divisible by 2 n times)
-int isPowerOfTwo(int num){
-    if(num == 0)
-        return 0;
-
-    //keep dividing num by 2 until num is 1 or num not divisible by 2
-    while(num != 1){
-        if((num%2) != 0)
-            return 0;
-        else
-            num = num/2;
-    }
-
-    return 1;
 }
 
 
@@ -430,6 +430,15 @@ void four1(double data[], int nn, int isign){
 }
 
 
+/** 
+ * Function: convolveFreqs
+ * Description: convolve freq domain signals X[k], H[k] using complex multiplication to produce Y[k]
+ * Parameters:
+ *          double* freqX - freq domain signal X[k] for input sound data
+ *          double* freqH - freq domain signal H[k] for impulse sound data
+ *          double* freqY - freq domain signal Y[k] for output sound data
+ *          int arrayLength - padded length of  input/impulse freq domain arrays 
+ */
 void convolveFreqs(double* freqX, double *freqH, double* freqY, int arrayLength){
     printf("Starting convolution loops...\n");
     //complex multiplication:
@@ -445,6 +454,15 @@ void convolveFreqs(double* freqX, double *freqH, double* freqY, int arrayLength)
     }
 }
 
+
+/** 
+ * Function: scaleOutputFreq
+ * Description: scale output freq signal to remove overflows/clipping in resulting audio
+ * Parameters: 
+ *          double* outFreq - convolved signal for output sound data
+ *          WavFile* inputFile - object for input signal WAV file
+ *          int numSamples - number of sound data samples in output signal
+ */
 void scaleOutputFreq(double* outFreq, WavFile* inputFile, int numSamples){
     double inputMaxValue = 0.0;
     double outputMaxValue = 0.0;
@@ -458,33 +476,40 @@ void scaleOutputFreq(double* outFreq, WavFile* inputFile, int numSamples){
             outputMaxValue = outFreq[i];
     }
 
-    //scale output frquency (divide by outputMax, multiply by inputMax)
-    //should hold that outputMax > inputMax, so will scale down to be audible
+    //scale output frequency to maximums (divide by outputMax, multiply by inputMax)
+    //should hold that outputMax > inputMax, so will scale down
     for(int i  = 0; i < numSamples; i++){
         outFreq[i] = outFreq[i] / outputMaxValue * inputMaxValue;
     }
 
 }
 
-void createOutputWAV(char* fileName, double *freqY, int numSamples, int shortMaxLength, WavFile* inputFile){
+
+/**
+ * Function: createOutputWAV
+ * Description: write header and convolved sound data to output WAV file
+ * Parameters:
+ *          char* fileName - name of output file
+ *          double* outputSignal - convolved and scaled output sound data
+ *          int numSamples - number of sound data samples in output signal
+ *          WavFile* inputFile - object for input signal WAV file
+ */
+void createOutputWAV(char* fileName, double* outputSignal, int numSamples, WavFile* inputFile){
+    
     //open file stream
     FILE* outputFile = fopen(fileName, "wb");
 
+    //write header for WAV output file
     printf("Writing WAV Header for %s...\n", fileName);
     writeWAVHeader(inputFile->numChannels, numSamples, inputFile->bitsPerSample, inputFile->sampleRate, outputFile);
 
     //write convolved output signal into output WAV file
     //use LSB method since signal needs to be short
-    
-
     printf("Writing convolved signal to %s\n", fileName);
-
-    
     for(int i = 0; i < numSamples; i++){
-        fwriteShortLSB((short) freqY[i], outputFile);
+        fwriteShortLSB((short) outputSignal[i], outputFile);
     }
     
-
     //close file stream
     printf("Done writing %s!\n", fileName);
     fclose(outputFile);

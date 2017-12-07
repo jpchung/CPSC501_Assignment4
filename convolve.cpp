@@ -8,9 +8,13 @@
  * Created by Johnny Chung - based on demo code from Leonard Manzara
  */
 
-//compile all files: g++ *.cpp -o convolve
-//run: ./convolve <inputfile.wav> <IRfile.wav> <outputfile.wav>
-
+/*
+compile all files: g++ *.cpp -o convolve
+run: ./convolve <inputfile.wav> <IRfile.wav> <outputfile.wav>
+profiler: g++ -p *.cpp -o convolve
+          ./convolve <inputfile.wav> <IRfile.wav> <outputfile.wav>
+          gprof convolve
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -90,6 +94,12 @@ int main(int argc, char* argv[]){
 }
 
 
+/** 
+ * Function: checkExtension
+ * Description: check file name contains the .wav extension
+ * Parameters:
+ *          char* fileName - file name from command-line arg
+ */
 int checkExtension(char* fileName){
     
     printf("Checking file extension for %s...", fileName);
@@ -112,6 +122,13 @@ int checkExtension(char* fileName){
        
 }
 
+
+/**
+ * Function: setExtensionFlag
+ * Description: set flag in main for valid file extensions for command-line args
+ * Parameters:
+ *          int* fileExtensions - pointer to list of file extension flags
+ */
 int setExtensionFlag(int* fileExtensions){
     int flag = 0;  
     for(int i = 0; i < sizeof(fileExtensions); i++){
@@ -122,6 +139,13 @@ int setExtensionFlag(int* fileExtensions){
     return flag;
 }
 
+
+/**
+ * Function: createOutputWAV
+ * Description: write header and convolved sound data to output WAV file
+ * Parameters:
+ *          char* fileName - name of output file
+ */
 void createOutputWAV(char* fileName){
     //P = N + M -1
     int outputSize = (inputFile->signalSize) + (impulseFile->signalSize) - 1;
@@ -178,6 +202,17 @@ void createOutputWAV(char* fileName){
     fclose(outputFile);
 }
 
+
+/** 
+ * Function: writeWAVHeader
+ * Description: writes the header for WAV file format to output file
+ * Parameters:
+ *          int numChannels - number of audio channels
+ *          int numSamples - number of sound data samples
+ *          int bitsPerSample - number of bits per sound data sample
+ *          int sampleRate - sampling frequency
+ *          FILE* outputFile - file stream for output     
+ */
 void writeWAVHeader(int numChannels, int numSamples, int bitsPerSample, int sampleRate, FILE *outputFile){
 
     //calculations for header fields
@@ -217,6 +252,16 @@ void writeWAVHeader(int numChannels, int numSamples, int bitsPerSample, int samp
 }
 
 
+/** 
+ * Function: fwriteIntLSB
+ * Description: Writes a 4-byte integer to the file stream, starting
+ *              with the least significant byte (i.e. writes the int
+ *              in little-endian form).  This routine will work on both
+ *              big-endian and little-endian architecture
+ * Parameters:
+ *          int data - int to write to file stream
+ *          FILE* fileStream - file stream
+ */
 size_t fwriteIntLSB(int data, FILE *fileStream){
 
     unsigned char charArray[4];
@@ -233,6 +278,16 @@ size_t fwriteIntLSB(int data, FILE *fileStream){
 }
 
 
+/** 
+ * Function: fwriteShortLSB
+ * Description: Writes a 2-byte integer to the file stream, starting
+ *              with the least significant byte (i.e. writes the int
+ *              in little-endian form).  This routine will work on both
+ *              big-endian and little-endian architectures.
+ * Parameters:
+ *          short data - short to write to file stream
+ *          FILE* fileStream - file stream
+ */
 size_t fwriteShortLSB(short data, FILE* fileStream){
 
     unsigned char charArray[2];
@@ -246,6 +301,18 @@ size_t fwriteShortLSB(short data, FILE* fileStream){
     return fwrite(charArray, sizeof(unsigned char), 2, fileStream);
 }
 
+
+/**
+ * Function: convolve
+ * Description: convolve input and impulse signals via input side algorithm
+ * Parameters:
+ *          double x[] - input signal array x[n]
+ *          int N -  size of x[n]
+ *          double h[]  - impulse signal array h[n]
+ *          int M - size of h[n]
+ *          double y[] - output signal y[n]
+ *          int P - size of y[n] (must be P = N + M -1)    
+ */
 void convolve(double x[], int N, double h[], int M,double y[], int P){
 
     int n, m;
@@ -287,13 +354,29 @@ void convolve(double x[], int N, double h[], int M,double y[], int P){
     
 }
 
+
+/** 
+ * Function: signalToDouble
+ * Description: Convert wav file sound data from short to double array
+ * Parameters:
+ *          WavFile* wav - object instance of WAV file
+ *          double signalDouble[] - output double array for wav file sound data 
+ */
 void signalToDouble(WavFile* wav,double signalDouble[]){
     for(int i  = 0; i < (wav->signalSize); i++){
         signalDouble[i] = ((double) wav->signal[i])/32678.0;
-        //signalDouble[i] = 0.5 * signalDouble[i];
     }
 }
 
+
+/** 
+ * Function: scaleOutputSignal
+ * Description: scale output signal to remove overflows/clipping in resulting audio
+ * Parameters: 
+ *          double* outputSignal - convolved signal for output sound data
+ *          WavFile* inputFile - object for input signal WAV file
+ *          int outputSize - number of sound data samples in output signal
+ */
 void scaleOutputSignal(double* outputSignal, WavFile* inputFile, int outputSize){
     double inputMaxValue = 0.0;
     double outputMaxValue = 0.0;
