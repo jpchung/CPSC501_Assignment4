@@ -145,7 +145,10 @@ int main(int argc, char* argv[]){
             //for(int i = 0; i < maxLengthPow2*2; i++){
             for(int i  = 0; i < maxLengthPow2; i++){
                freqX[i] = 0.0;
-               freqH[i] = 0.0; 
+            }
+
+            for(int i = 0; i < maxLengthPow2; i++){
+                freqH[i] = 0.0;
             }
             //rewrite every other index with respective signal for real part
             //index i = real, index i+1 = imaginary
