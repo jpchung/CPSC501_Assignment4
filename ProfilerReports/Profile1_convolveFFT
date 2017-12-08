@@ -2,25 +2,25 @@ Flat profile:
 
 Each sample counts as 0.01 seconds.
   %   cumulative   self              self     total           
- time   seconds   seconds    calls  ms/call  ms/call  name    
- 96.17      2.16     2.16        3   721.26   721.26  four1(double*, int, int)
-  1.78      2.20     0.04                             main
-  0.89      2.22     0.02        1    20.04    20.04  convolveFreqs(double*, double*, double*, int)
-  0.45      2.23     0.01        2     5.01     5.01  signalToDouble(WavFile*, double*)
-  0.45      2.24     0.01        2     5.01     5.01  WavFile::readWAV(char*)
-  0.45      2.25     0.01        1    10.02    10.02  scaleOutputFreq(double*, WavFile*, int)
-  0.00      2.25     0.00  1876684     0.00     0.00  std::abs(double)
-  0.00      2.25     0.00  1876074     0.00     0.00  fwriteShortLSB(short, _IO_FILE*)
-  0.00      2.25     0.00        5     0.00     0.00  fwriteIntLSB(int, _IO_FILE*)
-  0.00      2.25     0.00        3     0.00     0.00  checkExtension(char*)
-  0.00      2.25     0.00        2     0.00     0.00  std::operator|(std::_Ios_Openmode, std::_Ios_Openmode)
-  0.00      2.25     0.00        1     0.00     0.00  _GLOBAL__sub_I__ZN7WavFile7readWAVEPc
-  0.00      2.25     0.00        1     0.00     0.00  _GLOBAL__sub_I_main
-  0.00      2.25     0.00        1     0.00     0.00  writeWAVHeader(int, int, int, int, _IO_FILE*)
-  0.00      2.25     0.00        1     0.00     0.00  createOutputWAV(char*, double*, int, WavFile*)
-  0.00      2.25     0.00        1     0.00     0.00  setExtensionFlag(int*)
-  0.00      2.25     0.00        1     0.00     0.00  __static_initialization_and_destruction_0(int, int)
-  0.00      2.25     0.00        1     0.00     0.00  __static_initialization_and_destruction_0(int, int)
+ time   seconds   seconds    calls   s/call   s/call  name    
+ 97.26      8.03     8.03        3     2.68     2.68  four1(double*, int, int)
+  1.21      8.13     0.10                             main
+  0.61      8.18     0.05        1     0.05     0.05  convolveFreqs(double*, double*, double*, int)
+  0.36      8.21     0.03        2     0.02     0.02  signalToDouble(WavFile*, double*)
+  0.36      8.24     0.03        1     0.03     0.03  scaleOutputFreq(double*, WavFile*, int)
+  0.12      8.25     0.01  1876684     0.00     0.00  std::abs(double)
+  0.12      8.26     0.01        2     0.01     0.01  WavFile::readWAV(char*)
+  0.12      8.27     0.01        1     0.01     0.01  createOutputWAV(char*, double*, int, WavFile*)
+  0.00      8.27     0.00  1876074     0.00     0.00  fwriteShortLSB(short, _IO_FILE*)
+  0.00      8.27     0.00        5     0.00     0.00  fwriteIntLSB(int, _IO_FILE*)
+  0.00      8.27     0.00        3     0.00     0.00  checkExtension(char*)
+  0.00      8.27     0.00        2     0.00     0.00  std::operator|(std::_Ios_Openmode, std::_Ios_Openmode)
+  0.00      8.27     0.00        1     0.00     0.00  _GLOBAL__sub_I__ZN7WavFile7readWAVEPc
+  0.00      8.27     0.00        1     0.00     0.00  _GLOBAL__sub_I_main
+  0.00      8.27     0.00        1     0.00     0.00  writeWAVHeader(int, int, int, int, _IO_FILE*)
+  0.00      8.27     0.00        1     0.00     0.00  setExtensionFlag(int*)
+  0.00      8.27     0.00        1     0.00     0.00  __static_initialization_and_destruction_0(int, int)
+  0.00      8.27     0.00        1     0.00     0.00  __static_initialization_and_destruction_0(int, int)
 
  %         the percentage of the total running time of the
 time       program used by this function.
@@ -60,78 +60,78 @@ notice and this notice are preserved.
 		     Call graph (explanation follows)
 
 
-granularity: each sample hit covers 2 byte(s) for 0.44% of 2.25 seconds
+granularity: each sample hit covers 2 byte(s) for 0.12% of 8.27 seconds
 
 index % time    self  children    called     name
                                                  <spontaneous>
-[1]    100.0    0.04    2.21                 main [1]
-                2.16    0.00       3/3           four1(double*, int, int) [2]
-                0.02    0.00       1/1           convolveFreqs(double*, double*, double*, int) [3]
-                0.01    0.00       2/2           WavFile::readWAV(char*) [5]
-                0.01    0.00       2/2           signalToDouble(WavFile*, double*) [4]
-                0.01    0.00       1/1           scaleOutputFreq(double*, WavFile*, int) [6]
-                0.00    0.00 1876684/1876684     std::abs(double) [13]
-                0.00    0.00       3/3           checkExtension(char*) [16]
+[1]    100.0    0.10    8.17                 main [1]
+                8.03    0.00       3/3           four1(double*, int, int) [2]
+                0.05    0.00       1/1           convolveFreqs(double*, double*, double*, int) [3]
+                0.03    0.00       2/2           signalToDouble(WavFile*, double*) [4]
+                0.03    0.00       1/1           scaleOutputFreq(double*, WavFile*, int) [5]
+                0.01    0.00 1876684/1876684     std::abs(double) [6]
+                0.01    0.00       2/2           WavFile::readWAV(char*) [7]
+                0.01    0.00       1/1           createOutputWAV(char*, double*, int, WavFile*) [8]
+                0.00    0.00       3/3           checkExtension(char*) [17]
                 0.00    0.00       1/1           setExtensionFlag(int*) [22]
-                0.00    0.00       1/1           createOutputWAV(char*, double*, int, WavFile*) [21]
 -----------------------------------------------
-                2.16    0.00       3/3           main [1]
-[2]     96.0    2.16    0.00       3         four1(double*, int, int) [2]
+                8.03    0.00       3/3           main [1]
+[2]     97.1    8.03    0.00       3         four1(double*, int, int) [2]
 -----------------------------------------------
-                0.02    0.00       1/1           main [1]
-[3]      0.9    0.02    0.00       1         convolveFreqs(double*, double*, double*, int) [3]
+                0.05    0.00       1/1           main [1]
+[3]      0.6    0.05    0.00       1         convolveFreqs(double*, double*, double*, int) [3]
+-----------------------------------------------
+                0.03    0.00       2/2           main [1]
+[4]      0.4    0.03    0.00       2         signalToDouble(WavFile*, double*) [4]
+-----------------------------------------------
+                0.03    0.00       1/1           main [1]
+[5]      0.4    0.03    0.00       1         scaleOutputFreq(double*, WavFile*, int) [5]
+-----------------------------------------------
+                0.01    0.00 1876684/1876684     main [1]
+[6]      0.1    0.01    0.00 1876684         std::abs(double) [6]
 -----------------------------------------------
                 0.01    0.00       2/2           main [1]
-[4]      0.4    0.01    0.00       2         signalToDouble(WavFile*, double*) [4]
------------------------------------------------
-                0.01    0.00       2/2           main [1]
-[5]      0.4    0.01    0.00       2         WavFile::readWAV(char*) [5]
-                0.00    0.00       2/2           std::operator|(std::_Ios_Openmode, std::_Ios_Openmode) [17]
+[7]      0.1    0.01    0.00       2         WavFile::readWAV(char*) [7]
+                0.00    0.00       2/2           std::operator|(std::_Ios_Openmode, std::_Ios_Openmode) [18]
 -----------------------------------------------
                 0.01    0.00       1/1           main [1]
-[6]      0.4    0.01    0.00       1         scaleOutputFreq(double*, WavFile*, int) [6]
+[8]      0.1    0.01    0.00       1         createOutputWAV(char*, double*, int, WavFile*) [8]
+                0.00    0.00 1876070/1876074     fwriteShortLSB(short, _IO_FILE*) [15]
+                0.00    0.00       1/1           writeWAVHeader(int, int, int, int, _IO_FILE*) [21]
 -----------------------------------------------
-                0.00    0.00 1876684/1876684     main [1]
-[13]     0.0    0.00    0.00 1876684         std::abs(double) [13]
+                0.00    0.00       4/1876074     writeWAVHeader(int, int, int, int, _IO_FILE*) [21]
+                0.00    0.00 1876070/1876074     createOutputWAV(char*, double*, int, WavFile*) [8]
+[15]     0.0    0.00    0.00 1876074         fwriteShortLSB(short, _IO_FILE*) [15]
 -----------------------------------------------
-                0.00    0.00       4/1876074     writeWAVHeader(int, int, int, int, _IO_FILE*) [20]
-                0.00    0.00 1876070/1876074     createOutputWAV(char*, double*, int, WavFile*) [21]
-[14]     0.0    0.00    0.00 1876074         fwriteShortLSB(short, _IO_FILE*) [14]
------------------------------------------------
-                0.00    0.00       5/5           writeWAVHeader(int, int, int, int, _IO_FILE*) [20]
-[15]     0.0    0.00    0.00       5         fwriteIntLSB(int, _IO_FILE*) [15]
+                0.00    0.00       5/5           writeWAVHeader(int, int, int, int, _IO_FILE*) [21]
+[16]     0.0    0.00    0.00       5         fwriteIntLSB(int, _IO_FILE*) [16]
 -----------------------------------------------
                 0.00    0.00       3/3           main [1]
-[16]     0.0    0.00    0.00       3         checkExtension(char*) [16]
+[17]     0.0    0.00    0.00       3         checkExtension(char*) [17]
 -----------------------------------------------
-                0.00    0.00       2/2           WavFile::readWAV(char*) [5]
-[17]     0.0    0.00    0.00       2         std::operator|(std::_Ios_Openmode, std::_Ios_Openmode) [17]
+                0.00    0.00       2/2           WavFile::readWAV(char*) [7]
+[18]     0.0    0.00    0.00       2         std::operator|(std::_Ios_Openmode, std::_Ios_Openmode) [18]
 -----------------------------------------------
                 0.00    0.00       1/1           __libc_csu_init [30]
-[18]     0.0    0.00    0.00       1         _GLOBAL__sub_I__ZN7WavFile7readWAVEPc [18]
+[19]     0.0    0.00    0.00       1         _GLOBAL__sub_I__ZN7WavFile7readWAVEPc [19]
                 0.00    0.00       1/1           __static_initialization_and_destruction_0(int, int) [24]
 -----------------------------------------------
                 0.00    0.00       1/1           __libc_csu_init [30]
-[19]     0.0    0.00    0.00       1         _GLOBAL__sub_I_main [19]
+[20]     0.0    0.00    0.00       1         _GLOBAL__sub_I_main [20]
                 0.00    0.00       1/1           __static_initialization_and_destruction_0(int, int) [23]
 -----------------------------------------------
-                0.00    0.00       1/1           createOutputWAV(char*, double*, int, WavFile*) [21]
-[20]     0.0    0.00    0.00       1         writeWAVHeader(int, int, int, int, _IO_FILE*) [20]
-                0.00    0.00       5/5           fwriteIntLSB(int, _IO_FILE*) [15]
-                0.00    0.00       4/1876074     fwriteShortLSB(short, _IO_FILE*) [14]
------------------------------------------------
-                0.00    0.00       1/1           main [1]
-[21]     0.0    0.00    0.00       1         createOutputWAV(char*, double*, int, WavFile*) [21]
-                0.00    0.00 1876070/1876074     fwriteShortLSB(short, _IO_FILE*) [14]
-                0.00    0.00       1/1           writeWAVHeader(int, int, int, int, _IO_FILE*) [20]
+                0.00    0.00       1/1           createOutputWAV(char*, double*, int, WavFile*) [8]
+[21]     0.0    0.00    0.00       1         writeWAVHeader(int, int, int, int, _IO_FILE*) [21]
+                0.00    0.00       5/5           fwriteIntLSB(int, _IO_FILE*) [16]
+                0.00    0.00       4/1876074     fwriteShortLSB(short, _IO_FILE*) [15]
 -----------------------------------------------
                 0.00    0.00       1/1           main [1]
 [22]     0.0    0.00    0.00       1         setExtensionFlag(int*) [22]
 -----------------------------------------------
-                0.00    0.00       1/1           _GLOBAL__sub_I_main [19]
+                0.00    0.00       1/1           _GLOBAL__sub_I_main [20]
 [23]     0.0    0.00    0.00       1         __static_initialization_and_destruction_0(int, int) [23]
 -----------------------------------------------
-                0.00    0.00       1/1           _GLOBAL__sub_I__ZN7WavFile7readWAVEPc [18]
+                0.00    0.00       1/1           _GLOBAL__sub_I__ZN7WavFile7readWAVEPc [19]
 [24]     0.0    0.00    0.00       1         __static_initialization_and_destruction_0(int, int) [24]
 -----------------------------------------------
 
@@ -227,9 +227,9 @@ notice and this notice are preserved.
 
 Index by function name
 
-  [18] _GLOBAL__sub_I__ZN7WavFile7readWAVEPc [4] signalToDouble(WavFile*, double*) [24] __static_initialization_and_destruction_0(int, int)
-  [19] _GLOBAL__sub_I_main    [20] writeWAVHeader(int, int, int, int, _IO_FILE*) [2] four1(double*, int, int)
-  [15] fwriteIntLSB(int, _IO_FILE*) [21] createOutputWAV(char*, double*, int, WavFile*) [5] WavFile::readWAV(char*)
-   [3] convolveFreqs(double*, double*, double*, int) [6] scaleOutputFreq(double*, WavFile*, int) [13] std::abs(double)
-  [16] checkExtension(char*)  [22] setExtensionFlag(int*) [17] std::operator|(std::_Ios_Openmode, std::_Ios_Openmode)
-  [14] fwriteShortLSB(short, _IO_FILE*) [23] __static_initialization_and_destruction_0(int, int) [1] main
+  [19] _GLOBAL__sub_I__ZN7WavFile7readWAVEPc [4] signalToDouble(WavFile*, double*) [24] __static_initialization_and_destruction_0(int, int)
+  [20] _GLOBAL__sub_I_main    [21] writeWAVHeader(int, int, int, int, _IO_FILE*) [2] four1(double*, int, int)
+  [16] fwriteIntLSB(int, _IO_FILE*) [8] createOutputWAV(char*, double*, int, WavFile*) [7] WavFile::readWAV(char*)
+   [3] convolveFreqs(double*, double*, double*, int) [5] scaleOutputFreq(double*, WavFile*, int) [6] std::abs(double)
+  [17] checkExtension(char*)  [22] setExtensionFlag(int*) [18] std::operator|(std::_Ios_Openmode, std::_Ios_Openmode)
+  [15] fwriteShortLSB(short, _IO_FILE*) [23] __static_initialization_and_destruction_0(int, int) [1] main
